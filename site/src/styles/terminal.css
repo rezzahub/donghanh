@@ -1,0 +1,146 @@
+/* Terminal aesthetic — dark, monospace, yellow accent */
+
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700;800;900&display=swap");
+
+:root {
+  /* Typography — monospace everywhere */
+  --sl-font: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, monospace;
+  --sl-font-system-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, monospace;
+
+  /* Colors — dark bg, yellow accent */
+  --sl-color-accent-low: #1a1d00;
+  --sl-color-accent: #c8d200;
+  --sl-color-accent-high: #ebf500;
+  --sl-color-white: #f6f6f6;
+  --sl-color-gray-1: #e0e0e0;
+  --sl-color-gray-2: #a0a0a0;
+  --sl-color-gray-3: #5a5a5a;
+  --sl-color-gray-4: #2a2a2a;
+  --sl-color-gray-5: #1a1a1a;
+  --sl-color-gray-6: #0e0e0e;
+  --sl-color-black: #0a0a0a;
+
+  /* Backgrounds */
+  --sl-color-bg: #0a0a0a;
+  --sl-color-bg-nav: #0a0a0a;
+  --sl-color-bg-sidebar: #0e0e0e;
+  --sl-color-bg-inline-code: #1a1a1a;
+  --sl-color-hairline-shade: #222;
+  --sl-color-hairline-light: #1a1a1a;
+
+  /* Text */
+  --sl-color-text: #e0e0e0;
+  --sl-color-text-accent: #ebf500;
+
+  /* Sizes */
+  --sl-text-sm: 0.8125rem;
+  --sl-text-base: 0.875rem;
+  --sl-text-lg: 1rem;
+  --sl-text-xl: 1.125rem;
+  --sl-text-2xl: 1.25rem;
+  --sl-text-3xl: 1.5rem;
+  --sl-text-4xl: 2rem;
+
+  /* Sharp corners */
+  --sl-border-radius: 0;
+}
+
+/* Force dark mode */
+[data-theme="light"] {
+  --sl-color-bg: #0a0a0a;
+  --sl-color-bg-nav: #0a0a0a;
+  --sl-color-bg-sidebar: #0e0e0e;
+  --sl-color-bg-inline-code: #1a1a1a;
+  --sl-color-text: #e0e0e0;
+  --sl-color-text-accent: #ebf500;
+  --sl-color-hairline-shade: #222;
+  --sl-color-hairline-light: #1a1a1a;
+  --sl-color-white: #f6f6f6;
+  --sl-color-gray-1: #e0e0e0;
+  --sl-color-gray-2: #a0a0a0;
+  --sl-color-gray-3: #5a5a5a;
+  --sl-color-gray-4: #2a2a2a;
+  --sl-color-gray-5: #1a1a1a;
+  --sl-color-gray-6: #0e0e0e;
+  --sl-color-black: #0a0a0a;
+  --sl-color-accent-low: #1a1d00;
+  --sl-color-accent: #c8d200;
+  --sl-color-accent-high: #ebf500;
+}
+
+/* Remove rounded corners */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+/* Nav + sidebar borders */
+starlight-menu-button + nav,
+.sidebar-pane {
+  border-right: 1px solid #222;
+}
+
+header {
+  border-bottom: 1px solid #222 !important;
+}
+
+/* Code blocks — darker bg */
+pre {
+  background: #0e0e0e !important;
+  border: 1px solid #222 !important;
+}
+
+/* Links — yellow */
+a:not([class]) {
+  color: #ebf500;
+}
+
+a:not([class]):hover {
+  color: #f6f6f6;
+}
+
+/* Headings — brighter */
+h1,
+h2,
+h3,
+h4 {
+  color: #f6f6f6 !important;
+  letter-spacing: -0.02em;
+}
+
+/* Sidebar active item */
+[aria-current="page"],
+[aria-current="page"]:hover {
+  color: #ebf500 !important;
+  background: #1a1d00 !important;
+}
+
+/* Tables */
+table {
+  border: 1px solid #222;
+}
+
+th {
+  background: #1a1a1a !important;
+  border-bottom: 1px solid #222;
+}
+
+td {
+  border-bottom: 1px solid #1a1a1a;
+}
+
+/* Inline code */
+code:not(pre code) {
+  background: #1a1a1a;
+  border: 1px solid #222;
+  padding: 0.125em 0.375em;
+  color: #ebf500;
+}
+
+/* Hero customization */
+.hero {
+  border-bottom: 1px solid #222;
+}

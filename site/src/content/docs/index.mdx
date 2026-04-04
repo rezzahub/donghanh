@@ -1,0 +1,62 @@
+---
+title: "@donghanh"
+description: Build conversational interfaces with JSX.
+template: splash
+hero:
+  title: "@donghanh"
+  tagline: Build conversational interfaces with JSX. Operations return a Brief — the agent's HUD — and the framework renders it per target.
+  actions:
+    - text: Get Started
+      link: /guides/quickstart/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/rezzahub/donghanh
+      variant: minimal
+      icon: external
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+## Install
+
+```bash
+bunx create-donghanh my-app
+cd my-app
+bun install
+bun run dev
+```
+
+## How it works
+
+```tsx
+/** @jsxImportSource @donghanh/core */
+import { Action, Brief, Display, registerOperation } from "@donghanh/core";
+
+function ListItems({ data }) {
+  return (
+    <Brief>
+      You have {data.items.length} items.
+      <Display data={data.items} />
+      <Action operation="add-item" label="Add an item" />
+    </Brief>
+  );
+}
+
+export default registerOperation(ListItems, {
+  id: "list-items",
+  type: "query",
+  description: "List all items",
+  instruction: "Call this to see all items.",
+  input: {},
+  responseKey: "listItems",
+});
+```
+
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| `@donghanh/core` | JSX runtime, primitives, registry, executor |
+| `@donghanh/hono` | Hono routes for GPT Store + LLM chat |
+| `@donghanh/react` | Headless React hooks |
+| `create-donghanh` | CLI scaffolding tool |

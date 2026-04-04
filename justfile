@@ -16,9 +16,9 @@ test:
 
 # ============ Publish ============
 
-# Publish all packages to npm
-publish:
-    cd packages/core && npm publish --access public
-    cd packages/hono && npm publish --access public
-    cd packages/react && npm publish --access public
-    cd create-donghanh && npm publish --access public
+# Publish all packages to npm (usage: just publish 123456)
+publish otp:
+    cd packages/core && npm publish --access public --otp={{otp}}
+    cd packages/hono && npm publish --access public --otp={{otp}}
+    cd packages/react && npm publish --access public --otp={{otp}}
+    cd create-donghanh && npm publish --access public --otp={{otp}}
