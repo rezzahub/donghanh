@@ -3,12 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 
-const TEMPLATES = ["minimal", "trello"] as const;
+const TEMPLATES = ["minimal", "kanban-gpt"] as const;
 type Template = (typeof TEMPLATES)[number];
 
 const DESCRIPTIONS: Record<Template, string> = {
   minimal: "Hello world with D1 SQLite — 2 operations",
-  trello: "Mini Trello with boards, cards, members — 6 operations",
+  "kanban-gpt":
+    "Kanban board with Better Auth + Drizzle + GPT Store OAuth — 6 operations",
 };
 
 async function prompt(question: string): Promise<string> {
@@ -111,9 +112,9 @@ async function main() {
   const appName = path.basename(target);
   copyDir(srcDir, destDir, [
     ["my-donghanh-app", appName],
-    ["my-trello-app", appName],
+    ["my-kanban-app", appName],
     ["my-donghanh-app-db", `${appName}-db`],
-    ["my-trello-db", `${appName}-db`],
+    ["my-kanban-db", `${appName}-db`],
   ]);
 
   console.log();

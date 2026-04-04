@@ -32,9 +32,25 @@ site-deploy:
 
 # ============ Publish ============
 
-# Publish all packages to npm (usage: just publish 123456)
-publish otp:
-    cd packages/core && npm publish --access public --otp={{otp}}
-    cd packages/hono && npm publish --access public --otp={{otp}}
-    cd packages/react && npm publish --access public --otp={{otp}}
-    cd create-donghanh && npm publish --access public --otp={{otp}}
+# Publish packages to npm (usage: just publish all <otp> | just publish hono <otp>)
+publish target otp:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    publish_pkg() {
+      echo "Publishing $1..."
+      cd "$1" && npm publish --access public --otp={{otp}} && cd - > /dev/null || true
+    }
+    if [ "{{target}}" = "all" ]; then
+      publish_pkg packages/core
+      publish_pkg packages/hono
+      publish_pkg packages/react
+      publish_pkg create-donghanh
+    else
+      case "{{target}}" in
+        core) publish_pkg packages/core ;;
+        hono) publish_pkg packages/hono ;;
+        react) publish_pkg packages/react ;;
+        create) publish_pkg create-donghanh ;;
+        *) echo "Unknown target: {{target}}. Use: all, core, hono, react, create" && exit 1 ;;
+      esac
+    fi

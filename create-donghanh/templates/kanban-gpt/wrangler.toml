@@ -1,0 +1,16 @@
+name = "my-kanban-app"
+main = "worker.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-kanban-db"
+database_id = "local"
+
+[vars]
+BETTER_AUTH_URL = "http://localhost:8787"
+
+# Set via: npx wrangler secret put BETTER_AUTH_SECRET
+# Set via: npx wrangler secret put GPT_OAUTH_CLIENT_ID
+# Set via: npx wrangler secret put GPT_OAUTH_CLIENT_SECRET

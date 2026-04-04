@@ -1,19 +1,23 @@
 {
-  "name": "my-trello-app",
+  "name": "my-kanban-app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute my-trello-db --local --file=schema.sql"
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@donghanh/core": "^0.1.0",
-    "@donghanh/hono": "^0.1.0",
+    "@donghanh/core": "^0.1.1",
+    "@donghanh/hono": "^0.1.1",
+    "better-auth": "^1.4.0",
+    "drizzle-orm": "^0.45.0",
     "hono": "^4.7.0"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.0",
     "wrangler": "^4.0.0",
     "typescript": "^5.8.0"
   }
