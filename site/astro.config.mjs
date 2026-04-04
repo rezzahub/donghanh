@@ -5,7 +5,7 @@ import starlight from "@astrojs/starlight";
 
 export default defineConfig({
   output: "static",
-  adapter: cloudflare(),
+  adapter: cloudflare({ imageService: "compile" }),
   integrations: [
     starlight({
       title: "@donghanh",

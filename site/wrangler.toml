@@ -1,5 +1,8 @@
 name = "donghanh-site"
-compatibility_date = "2024-12-01"
+main = "@astrojs/cloudflare/entrypoints/server"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
 
 [assets]
-directory = "dist"
+directory = "dist/client"
+binding = "ASSETS"
