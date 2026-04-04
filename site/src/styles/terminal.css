@@ -140,6 +140,40 @@ code:not(pre code) {
   color: #ebf500;
 }
 
+/* ASCII logo */
+.ascii-logo {
+  color: #ebf500;
+  font-size: 0.45rem;
+  line-height: 1.1;
+  letter-spacing: 0.05em;
+  background: none !important;
+  border: none !important;
+  text-align: center;
+  margin: 2rem auto 1rem;
+  overflow: hidden;
+}
+
+@media (min-width: 40rem) {
+  .ascii-logo {
+    font-size: 0.65rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .ascii-logo {
+    font-size: 0.85rem;
+  }
+}
+
+.hero-tagline {
+  text-align: center;
+  color: #a0a0a0;
+  font-size: 1rem;
+  max-width: 40rem;
+  margin: 1rem auto 2rem;
+  line-height: 1.6;
+}
+
 /* Hero customization */
 .hero {
   border-bottom: 1px solid #222;
