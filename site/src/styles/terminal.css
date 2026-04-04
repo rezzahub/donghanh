@@ -10,9 +10,9 @@
     Monaco, Consolas, monospace;
 
   /* Colors — dark bg, yellow accent */
-  --sl-color-accent-low: #1a1d00;
-  --sl-color-accent: #c8d200;
-  --sl-color-accent-high: #ebf500;
+  --sl-color-accent-low: #001a0d;
+  --sl-color-accent: #00cc6a;
+  --sl-color-accent-high: #00ff88;
   --sl-color-white: #f6f6f6;
   --sl-color-gray-1: #e0e0e0;
   --sl-color-gray-2: #a0a0a0;
@@ -32,7 +32,7 @@
 
   /* Text */
   --sl-color-text: #e0e0e0;
-  --sl-color-text-accent: #ebf500;
+  --sl-color-text-accent: #00ff88;
 
   /* Sizes */
   --sl-text-sm: 0.8125rem;
@@ -54,7 +54,7 @@
   --sl-color-bg-sidebar: #0e0e0e;
   --sl-color-bg-inline-code: #1a1a1a;
   --sl-color-text: #e0e0e0;
-  --sl-color-text-accent: #ebf500;
+  --sl-color-text-accent: #00ff88;
   --sl-color-hairline-shade: #222;
   --sl-color-hairline-light: #1a1a1a;
   --sl-color-white: #f6f6f6;
@@ -65,9 +65,9 @@
   --sl-color-gray-5: #1a1a1a;
   --sl-color-gray-6: #0e0e0e;
   --sl-color-black: #0a0a0a;
-  --sl-color-accent-low: #1a1d00;
-  --sl-color-accent: #c8d200;
-  --sl-color-accent-high: #ebf500;
+  --sl-color-accent-low: #001a0d;
+  --sl-color-accent: #00cc6a;
+  --sl-color-accent-high: #00ff88;
 }
 
 /* Remove rounded corners */
@@ -95,7 +95,7 @@ pre {
 
 /* Links — yellow */
 a:not([class]) {
-  color: #ebf500;
+  color: #00ff88;
 }
 
 a:not([class]):hover {
@@ -114,8 +114,8 @@ h4 {
 /* Sidebar active item */
 [aria-current="page"],
 [aria-current="page"]:hover {
-  color: #ebf500 !important;
-  background: #1a1d00 !important;
+  color: #00ff88 !important;
+  background: #001a0d !important;
 }
 
 /* Tables */
@@ -137,12 +137,12 @@ code:not(pre code) {
   background: #1a1a1a;
   border: 1px solid #222;
   padding: 0.125em 0.375em;
-  color: #ebf500;
+  color: #00ff88;
 }
 
 /* ASCII logo */
 .ascii-logo {
-  color: #ebf500;
+  color: #00ff88;
   font-size: 0.45rem;
   line-height: 1.1;
   letter-spacing: 0.05em;
