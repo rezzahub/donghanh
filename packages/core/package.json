@@ -1,6 +1,6 @@
 {
   "name": "@donghanh/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Custom JSX runtime for conversational UI — primitives, registry, executor",
   "license": "MIT",
   "type": "module",
@@ -14,7 +14,4 @@
     "url": "https://github.com/rezzahub/donghanh",
     "directory": "packages/core"
   },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  }
 }
