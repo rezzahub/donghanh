@@ -1,0 +1,22 @@
+{
+  "name": "@donghanh/hono",
+  "version": "0.1.0",
+  "description": "Hono routes for GPT Store and LLM chat — renderers for ChatGPT and OpenAI-compatible APIs",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rezzahub/donghanh",
+    "directory": "packages/hono"
+  },
+  "dependencies": {
+    "@donghanh/core": "workspace:*",
+    "hono": "^4.7.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

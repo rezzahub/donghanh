@@ -1,0 +1,20 @@
+{
+  "name": "my-trello-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute my-trello-db --local --file=schema.sql"
+  },
+  "dependencies": {
+    "@donghanh/core": "^0.1.0",
+    "@donghanh/hono": "^0.1.0",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0",
+    "typescript": "^5.8.0"
+  }
+}

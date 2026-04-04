@@ -1,0 +1,34 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["**", "!bun.lock", "!create-donghanh/templates"]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2 },
+  "linter": {
+    "enabled": true,
+    "rules": { "recommended": true },
+    "domains": { "react": "recommended" }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/core/**", "packages/hono/**", "packages/react/**"],
+      "linter": {
+        "rules": {
+          "style": { "noNonNullAssertion": "off" },
+          "suspicious": { "noExplicitAny": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["packages/core/**", "packages/hono/**"],
+      "linter": {
+        "domains": { "react": "none" }
+      }
+    }
+  ],
+  "assist": {
+    "actions": { "source": { "organizeImports": "on" } }
+  }
+}

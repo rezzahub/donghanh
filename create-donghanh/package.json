@@ -1,0 +1,19 @@
+{
+  "name": "create-donghanh",
+  "version": "0.1.0",
+  "description": "Scaffold a donghanh project — conversational UI with JSX",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-donghanh": "src/index.ts"
+  },
+  "files": [
+    "src",
+    "templates"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rezzahub/donghanh",
+    "directory": "create-donghanh"
+  }
+}
