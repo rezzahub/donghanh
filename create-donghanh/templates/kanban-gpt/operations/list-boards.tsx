@@ -19,7 +19,7 @@ function ListBoards({ data }: OperationProps<Data>) {
       You have {data.boards.length} board(s).
       <Display data={data.boards.map(b => `${b.name} (${b.card_count} cards, ${b.member_count} members)`)} />
       {data.boards.map(b => (
-        <Action key={b.id} operation="board-detail" label={`View ${b.name}`} variables={{ boardId: b.id }} />
+        <Action operation="board-detail" label={`View ${b.name}`} variables={{ boardId: b.id }} />
       ))}
       <Action operation="create-board" label="Create new board" />
     </Brief>

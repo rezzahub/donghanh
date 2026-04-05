@@ -16,7 +16,7 @@ function BoardDetail({ data }: OperationProps<Data>) {
         cards: col.cards.map(c => c.title),
       }))} />
       {columns.map(col => (
-        <Action key={col.id} operation="add-card" label={`Add card to ${col.name}`} variables={{ boardId: board.id, columnId: col.id }} />
+        <Action operation="add-card" label={`Add card to ${col.name}`} variables={{ boardId: board.id, columnId: col.id }} />
       ))}
       <Action operation="add-member" label="Add member" variables={{ boardId: board.id }} />
     </Brief>
