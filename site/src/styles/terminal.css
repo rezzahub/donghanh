@@ -4,10 +4,12 @@
 
 :root {
   /* Typography — monospace everywhere */
-  --sl-font: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, monospace;
-  --sl-font-system-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo,
-    Monaco, Consolas, monospace;
+  --sl-font:
+    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
+  --sl-font-system-mono:
+    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
 
   /* Colors — dark bg, yellow accent */
   --sl-color-accent-low: #001a0d;

@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["esnext"],
+    "types": ["@cloudflare/workers-types"],
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -10,5 +11,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@donghanh/core"
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }
