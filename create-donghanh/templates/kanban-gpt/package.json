@@ -17,6 +17,7 @@
     "hono": "^4.7.0"
   },
   "devDependencies": {
+    "better-sqlite3": "^11.0.0",
     "drizzle-kit": "^0.31.0",
     "wrangler": "^4.0.0",
     "typescript": "^5.8.0"

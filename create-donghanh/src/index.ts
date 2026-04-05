@@ -125,7 +125,11 @@ async function main() {
   console.log("  Next steps:");
   console.log(`    cd ${target}`);
   console.log("    bun install");
-  console.log("    bun run db:init     # initialize D1 database");
+  if (template === "minimal") {
+    console.log("    bun run db:init     # initialize D1 database");
+  } else {
+    console.log("    bun run db:push     # push schema to D1");
+  }
   console.log("    bun run dev         # start dev server");
   console.log();
 }

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run lint
+      - run: bun test
+
+  templates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        template: [minimal, kanban-gpt]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+
+      # Scaffold from local template
+      - name: Scaffold ${{ matrix.template }}
+        run: |
+          mkdir -p /tmp/test-app
+          cp -r create-donghanh/templates/${{ matrix.template }}/* /tmp/test-app/
+
+      # Install deps
+      - name: Install
+        working-directory: /tmp/test-app
+        run: bun install
+
+      # TypeScript check
+      - name: Type check
+        working-directory: /tmp/test-app
+        run: bunx tsc --noEmit
