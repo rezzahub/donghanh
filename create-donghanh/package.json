@@ -1,14 +1,17 @@
 {
   "name": "create-donghanh",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Scaffold a donghanh project — conversational UI with JSX",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "create-donghanh": "src/index.ts"
+    "create-donghanh": "dist/index.js"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node"
   },
   "files": [
-    "src",
+    "dist",
     "templates"
   ],
   "repository": {

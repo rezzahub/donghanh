@@ -44,13 +44,14 @@ publish target otp:
       publish_pkg packages/core
       publish_pkg packages/hono
       publish_pkg packages/react
+      cd create-donghanh && bun run build && cd ..
       publish_pkg create-donghanh
     else
       case "{{target}}" in
         core) publish_pkg packages/core ;;
         hono) publish_pkg packages/hono ;;
         react) publish_pkg packages/react ;;
-        create) publish_pkg create-donghanh ;;
+        create) cd create-donghanh && bun run build && cd .. && publish_pkg create-donghanh ;;
         *) echo "Unknown target: {{target}}. Use: all, core, hono, react, create" && exit 1 ;;
       esac
     fi
