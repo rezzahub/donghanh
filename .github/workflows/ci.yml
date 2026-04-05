@@ -40,3 +40,13 @@ jobs:
       - name: Type check
         working-directory: /tmp/test-app
         run: bunx tsc --noEmit
+
+      # Run tests (if test files exist)
+      - name: Test
+        working-directory: /tmp/test-app
+        run: |
+          if ls *.test.ts **/*.test.ts 2>/dev/null | grep -q .; then
+            bun test
+          else
+            echo "No test files found, skipping"
+          fi

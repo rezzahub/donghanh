@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute my-donghanh-app-db --local --file=schema.sql"
+    "db:init": "wrangler d1 execute my-donghanh-app-db --local --file=schema.sql",
+    "test": "bun test"
   },
   "dependencies": {
     "@donghanh/core": "^0.1.1",

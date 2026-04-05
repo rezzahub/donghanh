@@ -1,0 +1,62 @@
+$ bun build src/index.ts --outdir dist --target node
+npm warn publish npm auto-corrected some errors in your package.json when publishing.  Please run "npm pkg fix" to address these errors.
+npm warn publish errors corrected:
+npm warn publish "repository.url" was normalized to "git+https://github.com/rezzahub/donghanh.git"
+npm notice
+npm notice 📦  create-donghanh@0.2.2
+npm notice Tarball Contents
+npm notice 3.5kB dist/index.js
+npm notice 488B package.json
+npm notice 814B templates/kanban-gpt/auth.ts
+npm notice 201B templates/kanban-gpt/biome.json
+npm notice 427B templates/kanban-gpt/db/index.ts
+npm notice 3.1kB templates/kanban-gpt/db/queries.ts
+npm notice 1.5kB templates/kanban-gpt/db/schema.ts
+npm notice 246B templates/kanban-gpt/drizzle.config.ts
+npm notice 350B templates/kanban-gpt/env.ts
+npm notice 801B templates/kanban-gpt/executor.ts
+npm notice 923B templates/kanban-gpt/oauth/authorize.ts
+npm notice 901B templates/kanban-gpt/oauth/code.ts
+npm notice 2.1kB templates/kanban-gpt/oauth/token.ts
+npm notice 1.2kB templates/kanban-gpt/operations/add-card.tsx
+npm notice 1.1kB templates/kanban-gpt/operations/add-member.tsx
+npm notice 1.3kB templates/kanban-gpt/operations/board-detail.tsx
+npm notice 1.1kB templates/kanban-gpt/operations/create-board.tsx
+npm notice 439B templates/kanban-gpt/operations/index.ts
+npm notice 1.2kB templates/kanban-gpt/operations/list-boards.tsx
+npm notice 1.1kB templates/kanban-gpt/operations/move-card.tsx
+npm notice 634B templates/kanban-gpt/package.json
+npm notice 1.3kB templates/kanban-gpt/README.md
+npm notice 388B templates/kanban-gpt/tsconfig.json
+npm notice 1.7kB templates/kanban-gpt/worker.ts
+npm notice 421B templates/kanban-gpt/wrangler.toml
+npm notice 201B templates/minimal/biome.json
+npm notice 867B templates/minimal/executor.ts
+npm notice 891B templates/minimal/operations/add-item.tsx
+npm notice 163B templates/minimal/operations/index.ts
+npm notice 753B templates/minimal/operations/list-items.tsx
+npm notice 489B templates/minimal/package.json
+npm notice 416B templates/minimal/README.md
+npm notice 144B templates/minimal/schema.sql
+npm notice 380B templates/minimal/tsconfig.json
+npm notice 793B templates/minimal/worker.ts
+npm notice 210B templates/minimal/wrangler.toml
+npm notice Tarball Details
+npm notice name: create-donghanh
+npm notice version: 0.2.2
+npm notice filename: create-donghanh-0.2.2.tgz
+npm notice package size: 9.5 kB
+npm notice unpacked size: 32.5 kB
+npm notice shasum: 2663df94d8d872a1c3113e583f7c868b8b88afe8
+npm notice integrity: sha512-dV4Mtm/O9xZWG[...]65dFOU6Wjroow==
+npm notice total files: 36
+npm notice
+npm notice Publishing to https://registry.npmjs.org/ with tag latest and public access
+npm error code E404
+npm error 404 Not Found - PUT https://registry.npmjs.org/create-donghanh - Not found
+npm error 404
+npm error 404  The requested resource 'create-donghanh@0.2.2' could not be found or you do not have permission to access it.
+npm error 404
+npm error 404 Note that you can also install from a
+npm error 404 tarball, folder, http url, or git url.
+npm error A complete log of this run can be found in: /Users/cinoss/.npm/_logs/2026-04-05T15_26_44_090Z-debug-0.log

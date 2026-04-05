@@ -1,27 +1,32 @@
-import { Hono } from "hono";
+import { App, buildRegistry } from "@donghanh/core";
 import { gptRoutes } from "@donghanh/hono";
-import { buildRegistry, App } from "@donghanh/core";
-import { operations } from "./operations";
+import { Hono } from "hono";
 import { createExecutor } from "./executor";
+import { operations } from "./operations";
 
 type Env = { Bindings: { DB: D1Database } };
-
-const app = new Hono<Env>();
 
 const appNode = App({ operations });
 const registry = buildRegistry(appNode);
 
-app.route("/api", gptRoutes({
-  registry,
-  executor: (opId, vars, ctx) => createExecutor((ctx as any).db)(opId, vars, ctx),
-  authenticate: async (request) => ({ userId: "anonymous" }),
-}));
+const app = new Hono<Env>();
 
-// Inject D1 binding into executor context
-app.use("/api/*", async (c, next) => {
-  (c as any).db = c.env.DB;
+// Store DB reference for the executor
+let _db: D1Database;
+
+app.use("/*", async (c, next) => {
+  _db = c.env.DB;
   await next();
 });
+
+app.route(
+  "/api",
+  gptRoutes({
+    registry,
+    executor: (opId, vars, ctx) => createExecutor(_db)(opId, vars, ctx),
+    authenticate: async () => ({ userId: "anonymous" }),
+  }),
+);
 
 app.get("/", (c) => c.text("donghanh app running. Try GET /api/operations"));
 
