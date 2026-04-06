@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:push": "drizzle-kit push",
+    "db:init": "wrangler d1 execute my-kanban-db --local --file=schema.sql",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
