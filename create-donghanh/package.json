@@ -1,6 +1,6 @@
 {
   "name": "create-donghanh",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Scaffold a donghanh project — conversational UI with JSX",
   "license": "MIT",
   "type": "module",
