@@ -1,13 +1,19 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer } from "better-auth/plugins";
-import { db } from "./db";
+import { drizzle } from "drizzle-orm/d1";
+import * as schema from "./db/schema";
 import { getEnv } from "./env";
 
 function createAuth() {
   const env = getEnv();
+  const authDb = drizzle(env.DB, { schema });
   return betterAuth({
-    database: drizzleAdapter(db, { provider: "sqlite", usePlural: true }),
+    database: drizzleAdapter(authDb, {
+      provider: "sqlite",
+      usePlural: true,
+      schema,
+    }),
     plugins: [bearer()],
     emailAndPassword: {
       enabled: true,
