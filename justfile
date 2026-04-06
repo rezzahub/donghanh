@@ -26,7 +26,7 @@ test-template template:
     echo "=== Type check ==="
     bunx tsc --noEmit
     echo "=== Tests ==="
-    if find . -name '*.test.ts' | grep -q .; then
+    if find . -not -path '*/node_modules/*' -name '*.test.ts' | grep -q .; then
       bun test
     else
       echo "No test files, skipping"

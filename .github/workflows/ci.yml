@@ -45,7 +45,7 @@ jobs:
       - name: Test
         working-directory: /tmp/test-app
         run: |
-          if find . -name '*.test.ts' | grep -q .; then
+          if find . -not -path '*/node_modules/*' -name '*.test.ts' | grep -q .; then
             bun test
           else
             echo "No test files found, skipping"
