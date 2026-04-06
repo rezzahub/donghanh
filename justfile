@@ -14,6 +14,43 @@ lint-fix:
 test:
     bun test
 
+# Test a template by scaffolding, installing, type-checking, and running tests
+test-template template:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dir=$(mktemp -d)
+    echo "Scaffolding {{template}} → $dir"
+    cp -r create-donghanh/templates/{{template}}/* "$dir/"
+    cd "$dir"
+    bun install
+    echo "=== Type check ==="
+    bunx tsc --noEmit
+    echo "=== Tests ==="
+    if find . -name '*.test.ts' | grep -q .; then
+      bun test
+    else
+      echo "No test files, skipping"
+    fi
+    echo "✓ {{template}} passed"
+    rm -rf "$dir"
+
+# Test all templates
+test-templates:
+    just test-template minimal
+    just test-template kanban-gpt
+
+# View latest CI run
+ci:
+    gh run list --repo rezzahub/donghanh --workflow=ci.yml --limit=5
+
+# Watch latest CI run
+ci-watch:
+    gh run watch $(gh run list --repo rezzahub/donghanh --workflow=ci.yml --limit=1 --json databaseId -q '.[0].databaseId') --repo rezzahub/donghanh --exit-status
+
+# View failed CI logs
+ci-logs:
+    gh run view $(gh run list --repo rezzahub/donghanh --workflow=ci.yml --limit=1 --json databaseId -q '.[0].databaseId') --repo rezzahub/donghanh --log-failed
+
 # ============ Publish ============
 
 # ============ Site ============
