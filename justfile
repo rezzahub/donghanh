@@ -5,6 +5,20 @@ default:
 
 # ============ Development ============
 
+# Run a script in a workspace package (e.g. `just core build`, `just hono test`)
+core *args:
+    cd packages/core && bun run {{args}}
+hono *args:
+    cd packages/hono && bun run {{args}}
+react *args:
+    cd packages/react && bun run {{args}}
+widget *args:
+    cd packages/widget && bun run {{args}}
+widget-vite *args:
+    cd packages/widget-vite && bun run {{args}}
+create *args:
+    cd create-donghanh && bun run {{args}}
+
 lint:
     bun run lint
 
@@ -81,6 +95,8 @@ publish target otp:
       publish_pkg packages/core
       publish_pkg packages/hono
       publish_pkg packages/react
+      publish_pkg packages/widget
+      publish_pkg packages/widget-vite
       cd create-donghanh && bun run build && cd ..
       publish_pkg create-donghanh
     else
@@ -88,7 +104,9 @@ publish target otp:
         core) publish_pkg packages/core ;;
         hono) publish_pkg packages/hono ;;
         react) publish_pkg packages/react ;;
+        widget) publish_pkg packages/widget ;;
+        widget-vite) publish_pkg packages/widget-vite ;;
         create) cd create-donghanh && bun run build && cd .. && publish_pkg create-donghanh ;;
-        *) echo "Unknown target: {{target}}. Use: all, core, hono, react, create" && exit 1 ;;
+        *) echo "Unknown target: {{target}}. Use: all, core, hono, react, widget, widget-vite, create" && exit 1 ;;
       esac
     fi

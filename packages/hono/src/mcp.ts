@@ -225,7 +225,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
       }
 
       case "resources/read": {
-        const uri = (body.params ?? {}).uri as string | undefined;
+        const uri = body.params?.uri as string | undefined;
         if (!uri) return c.json(failure(id, -32602, "Missing uri"), 400);
         const widget = Object.values(widgets).find((w) => w.uri === uri);
         if (!widget) {

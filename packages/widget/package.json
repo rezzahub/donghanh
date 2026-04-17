@@ -1,0 +1,22 @@
+{
+  "name": "@donghanh/widget",
+  "version": "0.1.0",
+  "description": "Iframe runtime for donghanh Apps SDK widgets — MCP bridge, hooks, and default renderers",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bridge": "./src/bridge.ts",
+    "./hooks": "./src/hooks.tsx",
+    "./renderers": "./src/renderers.tsx"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rezzahub/donghanh",
+    "directory": "packages/widget"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  }
+}

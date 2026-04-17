@@ -16,7 +16,9 @@
       "@donghanh/core": ["./packages/core/src/index.ts"],
       "@donghanh/core/*": ["./packages/core/src/*"],
       "@donghanh/hono": ["./packages/hono/src/index.ts"],
-      "@donghanh/react": ["./packages/react/src/index.ts"]
+      "@donghanh/react": ["./packages/react/src/index.ts"],
+      "@donghanh/widget": ["./packages/widget/src/index.ts"],
+      "@donghanh/widget/*": ["./packages/widget/src/*"]
     }
   },
   "include": ["packages/**/*.ts", "packages/**/*.tsx"],
