@@ -3,6 +3,7 @@ import * as queries from "./db/queries";
 
 export const executor: Executor = async (operationId, variables, context) => {
   const v = variables as Record<string, string>;
+  if (!context.userId) throw new Error("Unauthenticated");
   const userId = context.userId;
 
   switch (operationId) {

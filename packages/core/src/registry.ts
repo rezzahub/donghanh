@@ -14,6 +14,11 @@ export interface OperationDetail {
   instruction: string;
   input: object;
   response?: object;
+  auth?: "none" | "optional" | "required";
+  scopes?: string[];
+  destructive?: boolean;
+  external?: boolean;
+  widget?: string;
 }
 
 export interface Registry {
@@ -53,6 +58,11 @@ export function buildRegistry(
         instruction: config.instruction,
         input: config.input,
         response: responseSchemas?.[name],
+        auth: config.auth,
+        scopes: config.scopes,
+        destructive: config.destructive,
+        external: config.external,
+        widget: config.widget,
       };
     },
 

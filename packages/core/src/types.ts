@@ -12,6 +12,16 @@ export interface OperationConfig {
   instruction: string;
   input: object;
   responseKey: string;
+  /** Auth requirement for this op. Default "required". */
+  auth?: "none" | "optional" | "required";
+  /** OAuth scopes required when auth is "required" or "optional". */
+  scopes?: string[];
+  /** True if this mutation deletes or irreversibly overwrites user data. */
+  destructive?: boolean;
+  /** True if this op writes to arbitrary external targets (default false for bounded ops). */
+  external?: boolean;
+  /** Widget name (matches a key in mcpRoutes `widgets` map). Omit for data-only ops. */
+  widget?: string;
 }
 
 export interface OperationComponent<T = any> {
@@ -35,6 +45,7 @@ export type Executor = (
 ) => Promise<unknown>;
 
 export interface ExecutorContext {
-  userId: string;
+  /** Authenticated user id, or null for anonymous tools (OperationConfig.auth === "none"). */
+  userId: string | null;
   request: Request;
 }
