@@ -7,20 +7,29 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:init": "wrangler d1 execute my-kanban-db --local --file=schema.sql",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "widgets": "vite build"
   },
   "dependencies": {
-    "@donghanh/core": "^0.1.1",
-    "@donghanh/hono": "^0.1.1",
+    "@donghanh/core": "^0.2.0",
+    "@donghanh/hono": "^0.2.0",
+    "@donghanh/config": "^0.1.0",
+    "@donghanh/widget": "^0.1.0",
     "better-auth": "^1.4.0",
     "drizzle-orm": "^0.45.0",
-    "hono": "^4.7.0"
+    "hono": "^4.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
+    "@donghanh/widget-vite": "^0.1.0",
     "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "better-sqlite3": "^11.0.0",
     "drizzle-kit": "^0.31.0",
+    "vite": "^7.0.0",
     "wrangler": "^4.0.0",
     "typescript": "^5.8.0"
   }

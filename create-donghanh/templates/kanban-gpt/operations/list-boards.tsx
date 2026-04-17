@@ -33,4 +33,5 @@ export default registerOperation(ListBoards, {
   instruction: "Call this first to see available boards.",
   input: {},
   responseKey: "listBoards",
+  widget: "task-card",
 });

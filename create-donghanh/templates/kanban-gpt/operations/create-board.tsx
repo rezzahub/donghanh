@@ -25,4 +25,5 @@ export default registerOperation(CreateBoard, {
     properties: { name: { type: "string", description: "Board name" } },
   },
   responseKey: "createBoard",
+  widget: "task-card",
 });

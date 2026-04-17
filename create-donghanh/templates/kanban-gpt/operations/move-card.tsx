@@ -28,4 +28,5 @@ export default registerOperation(MoveCard, {
     },
   },
   responseKey: "moveCard",
+  widget: "task-card",
 });

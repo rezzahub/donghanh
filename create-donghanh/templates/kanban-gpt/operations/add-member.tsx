@@ -29,4 +29,5 @@ export default registerOperation(AddMember, {
     },
   },
   responseKey: "addMember",
+  widget: "task-card",
 });

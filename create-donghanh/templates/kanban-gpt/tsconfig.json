@@ -11,6 +11,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@donghanh/core"
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "include": ["**/*.ts", "operations/**/*.tsx"],
+  "exclude": ["node_modules", "widgets", "dist", "manifest", "vite.config.ts"]
 }

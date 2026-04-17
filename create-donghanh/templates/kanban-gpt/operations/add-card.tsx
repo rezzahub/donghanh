@@ -30,4 +30,5 @@ export default registerOperation(AddCard, {
     },
   },
   responseKey: "addCard",
+  widget: "task-card",
 });

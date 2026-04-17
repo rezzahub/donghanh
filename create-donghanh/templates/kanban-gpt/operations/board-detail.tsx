@@ -34,4 +34,5 @@ export default registerOperation(BoardDetail, {
     properties: { boardId: { type: "string" } },
   },
   responseKey: "boardDetail",
+  widget: "task-card",
 });
