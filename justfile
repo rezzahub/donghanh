@@ -3,9 +3,9 @@
 default:
     @just --list
 
-# Attach or create tmux session "splitbee"
+# Attach or create tmux session "donghanh"
 tmux:
-    tmux new-session -A -s splitbee
+    tmux new-session -A -s donghanh
 
 # ============ Development ============
 
