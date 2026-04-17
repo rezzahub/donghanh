@@ -7,10 +7,11 @@ description: What is @donghanh and why does it exist.
 
 You write operations as components. Each returns a `<Brief>` — the agent's HUD. The framework renders it differently per target:
 
-| Target | What the agent sees |
-|--------|-------------------|
-| **ChatGPT GPT Store** | JSON: `nextSteps`, `suggestedActions`, `display` |
-| **LLM chat (in-app)** | Tool result text + action metadata |
+| Target | Adapter | What the agent sees |
+|--------|---------|-------------------|
+| **GPT Store (Custom GPTs)** | `gptRoutes` | REST JSON: `nextSteps`, `suggestedActions`, `display` |
+| **Apps SDK (MCP)** | `mcpRoutes` | MCP tools + widget iframe (`structuredContent`, `_meta.ui`) |
+| **Self-hosted React chat** | `chatRoutes` | Tool result text + action metadata streamed over SSE |
 
 ## Key ideas
 

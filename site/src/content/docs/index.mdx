@@ -60,6 +60,25 @@ export default registerOperation(ListItems, {
 | Package | Description |
 |---------|-------------|
 | `@donghanh/core` | JSX runtime, primitives, registry, executor |
-| `@donghanh/hono` | Hono routes for GPT Store + LLM chat |
-| `@donghanh/react` | Headless React hooks |
+| `@donghanh/hono` | Hono routes: `gptRoutes` (GPT Store), `mcpRoutes` (Apps SDK), `chatRoutes` (self-hosted LLM chat) |
+| `@donghanh/react` | Headless React hooks for self-hosted chat |
+| `@donghanh/widget` | Runtime for Apps SDK iframe widgets |
+| `@donghanh/widget-vite` | Vite plugin: bundles widgets + emits manifest |
 | `create-donghanh` | CLI scaffolding tool |
+
+## Ship modes
+
+Same operations, three channels:
+
+- **GPT Store** — REST + OpenAPI, runs inside Custom GPTs (`gptRoutes`)
+- **Apps SDK** — MCP over HTTP with iframe widgets (`mcpRoutes` + `@donghanh/widget`)
+- **Self-hosted** — bring your own LLM, SSE stream to React UI (`chatRoutes` + `@donghanh/react`)
+
+## AI coding skills
+
+Skills for coding agents live in [`skills/`](https://github.com/rezzahub/donghanh/tree/main/skills):
+
+- **`donghanh`** — core concepts, adapters, protocol rules, common pitfalls
+- **`donghanh-prompts`** — where to put steering text (description, instruction, start, Brief, widgetDescription)
+
+Invoke via the Skill tool in Claude Code / Cursor / Copilot CLI when working in a donghanh codebase.

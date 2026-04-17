@@ -39,6 +39,21 @@ export default defineConfig({
           label: "API Reference",
           autogenerate: { directory: "reference" },
         },
+        {
+          label: "Resources",
+          items: [
+            {
+              label: "AI coding skills",
+              link: "https://github.com/rezzahub/donghanh/tree/main/skills",
+              attrs: { target: "_blank" },
+            },
+            {
+              label: "GitHub",
+              link: "https://github.com/rezzahub/donghanh",
+              attrs: { target: "_blank" },
+            },
+          ],
+        },
       ],
     }),
   ],
