@@ -154,6 +154,8 @@ You are <Name>, a <role>. <Purpose>.
 - Mutations: POST /api/gpt/mutate/{op}
 ```
 
+**Do not list specific operation names or examples.** The operations list endpoint + per-op `description` + `getOperationDetail` already teach ChatGPT what's available and how to call each op. Hard-coding "call `check-offer` with url=..." here means every operation rename or new op becomes a prompt edit. Let the protocol carry it.
+
 This surface doesn't exist for Apps SDK (MCP) — ChatGPT's MCP client handles protocol natively, and metadata on tools drives everything.
 
 ## 4. `start` — dynamic system prompt extension

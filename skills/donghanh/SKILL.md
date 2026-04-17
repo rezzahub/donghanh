@@ -138,6 +138,31 @@ Exposes `GET /operations`, `GET /query/:op`, `POST /mutate/:op`. ChatGPT treats 
 app.route("/api", gptRoutes({ registry, executor, authenticate, ... }));
 ```
 
+**Per-op auth is URL-based, not declarative.** `gptRoutes` runs `authenticate` before every op. For public ops (e.g. `start`, `search`, preview), your `authenticate` hook must inspect the URL and return a sentinel userId instead of failing:
+
+```ts
+const PUBLIC_OPS = new Set(["start", "check-offer"]);
+const authenticate: Authenticate = async (request) => {
+  const opId = new URL(request.url).pathname.match(/\/(query|mutate)\/([^/?]+)/)?.[2];
+  const isPublic = opId ? PUBLIC_OPS.has(opId) : false;
+  const session = await resolveSessionFromRequest(request);
+  if (!session) {
+    if (isPublic) return { userId: "anonymous" };
+    return { error: new Response("Unauthorized", { status: 401 }) };
+  }
+  return { userId: session.user.id };
+};
+```
+
+The executor should also short-circuit auth-gated GraphQL queries for guest callers to avoid hitting `requireAuth` in resolvers.
+
+**Better Auth gotcha.** ChatGPT sends the session as `Authorization: Bearer <token>`, not as a cookie. `auth.api.getSession({ headers })` only parses cookies. Use `internalAdapter.findSession(token)` instead:
+
+```ts
+const ctx = await auth.$context;
+const session = await ctx.internalAdapter.findSession(token).catch(() => null);
+```
+
 ### GPT Apps — `mcpRoutes`
 
 Exposes `/mcp` JSON-RPC + `/.well-known/oauth-protected-resource`. Per-op tools with annotations + `securitySchemes`. Widget in iframe via MCP resources.

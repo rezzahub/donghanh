@@ -4,6 +4,7 @@ import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
+  site: "https://donghanh.dev",
   output: "static",
   adapter: cloudflare({ imageService: "compile" }),
   integrations: [
