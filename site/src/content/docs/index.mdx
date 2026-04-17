@@ -81,4 +81,11 @@ Skills for coding agents live in [`skills/`](https://github.com/rezzahub/donghan
 - **`donghanh`** — core concepts, adapters, protocol rules, common pitfalls
 - **`donghanh-prompts`** — where to put steering text (description, instruction, start, Brief, widgetDescription)
 
-Invoke via the Skill tool in Claude Code / Cursor / Copilot CLI when working in a donghanh codebase.
+Install into `~/.claude/skills/` (or your agent's skills dir):
+
+```bash
+npx degit rezzahub/donghanh/skills/donghanh ~/.claude/skills/donghanh
+npx degit rezzahub/donghanh/skills/donghanh-prompts ~/.claude/skills/donghanh-prompts
+```
+
+Then invoke via the Skill tool in Claude Code / Cursor / Copilot CLI when working in a donghanh codebase.
