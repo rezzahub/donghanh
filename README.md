@@ -36,30 +36,35 @@ export default registerOperation(ListItems, {
   instruction: "Call this to see all items.",
   input: {},
   responseKey: "listItems",
+  auth: "required",    // "none" | "optional" | "required"
+  widget: "items",     // optional — binds to an Apps SDK widget
 });
 ```
 
 The `<Brief>` is the agent's HUD — not shown to users. The framework renders it differently per target:
 
-| Target | `<Message>` | `<Action>` | `<Display>` |
-|--------|------------|-----------|------------|
-| **ChatGPT** | `nextSteps` string | `suggestedActions[]` | `display` field |
-| **LLM chat** | Tool result text | Action metadata for buttons | Formatted text |
+| Target | Adapter | `<Message>` | `<Action>` | `<Display>` |
+|--------|---------|------------|-----------|------------|
+| **ChatGPT GPT Store** | `gptRoutes` | `nextSteps` | `suggestedActions[]` | `display` field |
+| **ChatGPT Apps SDK (MCP)** | `mcpRoutes` + `@donghanh/widget` | `content[]` text | `structuredContent.actions` → iframe buttons | `structuredContent.display` → iframe |
+| **Self-hosted React chat** | `chatRoutes` + `@donghanh/react` | tool-result text | action metadata | formatted text |
 
 ## Packages
 
 | Package | Description |
 |---------|-------------|
 | `@donghanh/core` | Custom JSX runtime, primitives, registry, executor |
-| `@donghanh/hono` | Hono routes for GPT Store + LLM chat |
-| `@donghanh/react` | Headless React hooks (useChat, useInitOperation) |
+| `@donghanh/hono` | Hono routes: `gptRoutes` (GPT Store), `mcpRoutes` (Apps SDK), `chatRoutes` (LLM chat) |
+| `@donghanh/react` | Headless React hooks for self-hosted chat (useChat, useInitOperation) |
+| `@donghanh/widget` | Iframe runtime for Apps SDK widgets — MCP bridge, hooks, renderers |
+| `@donghanh/widget-vite` | Vite plugin that bundles widgets into inline HTML + manifest for `mcpRoutes` |
 | `create-donghanh` | CLI scaffolding tool |
 
 ## Templates
 
 ```bash
-bunx create-donghanh my-app --template minimal   # 2 operations, D1 SQLite
-bunx create-donghanh my-app --template trello     # 6 operations, boards/cards/members
+bunx create-donghanh my-app --template minimal     # 2 operations, D1 SQLite
+bunx create-donghanh my-app --template kanban-gpt  # 6 operations, OAuth, Better Auth
 ```
 
 ## Architecture
