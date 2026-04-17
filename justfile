@@ -3,6 +3,10 @@
 default:
     @just --list
 
+# Attach or create tmux session "splitbee"
+tmux:
+    tmux new-session -A -s splitbee
+
 # ============ Development ============
 
 # Run a script in a workspace package (e.g. `just core build`, `just hono test`)
