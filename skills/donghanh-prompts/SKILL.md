@@ -295,3 +295,9 @@ Since ChatGPT discovers tools by metadata similarity to user prompts:
 - Forgetting that `instruction` is concatenated with `description` in MCP — don't repeat.
 - Treating `Message` as user-facing copy. It's model narration that *becomes* user-facing after the model rewrites it.
 - Putting secrets or internal identifiers in any of these fields — they all go to the model.
+
+## References
+
+- [donghanh.dev](https://donghanh.dev) — full framework docs
+- [donghanh.dev/reference/core](https://donghanh.dev/reference/core) — `registerOperation`, `OperationConfig` fields
+- [donghanh.dev/reference/hono](https://donghanh.dev/reference/hono) — `chatRoutes.systemPrompt`, `gptRoutes`, `mcpRoutes`

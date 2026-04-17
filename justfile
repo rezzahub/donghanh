@@ -20,6 +20,10 @@ widget *args:
     cd packages/widget && bun run {{args}}
 widget-vite *args:
     cd packages/widget-vite && bun run {{args}}
+config *args:
+    cd packages/config && bun run {{args}}
+cli *args:
+    cd packages/cli && bun run {{args}}
 create *args:
     cd create-donghanh && bun run {{args}}
 
@@ -101,6 +105,8 @@ publish target otp:
       publish_pkg packages/react
       publish_pkg packages/widget
       publish_pkg packages/widget-vite
+      publish_pkg packages/config
+      publish_pkg packages/cli
       cd create-donghanh && bun run build && cd ..
       publish_pkg create-donghanh
     else
@@ -110,7 +116,9 @@ publish target otp:
         react) publish_pkg packages/react ;;
         widget) publish_pkg packages/widget ;;
         widget-vite) publish_pkg packages/widget-vite ;;
+        config) publish_pkg packages/config ;;
+        cli) publish_pkg packages/cli ;;
         create) cd create-donghanh && bun run build && cd .. && publish_pkg create-donghanh ;;
-        *) echo "Unknown target: {{target}}. Use: all, core, hono, react, widget, widget-vite, create" && exit 1 ;;
+        *) echo "Unknown target: {{target}}. Use: all, core, hono, react, widget, widget-vite, config, cli, create" && exit 1 ;;
       esac
     fi

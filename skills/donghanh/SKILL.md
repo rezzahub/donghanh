@@ -216,11 +216,15 @@ Per-op widget via `OperationConfig.widget: "boards"`.
 ## CLI (`@donghanh/cli`)
 
 ```
-donghanh widget <name>       scaffold widget + patch config
-donghanh operation <name>    scaffold op + patch config
-donghanh dev                 vite dev + server watch
-donghanh build               widgets → manifest → server bundle
+donghanh widget <name>                scaffold widgets/<name>.tsx + patch donghanh.config.ts
+donghanh operation <name> [--mutation]  scaffold operations/<name>.tsx (query by default)
+donghanh help
 ```
+
+- Kebab-case names → PascalCase component + camelCase `responseKey`
+- Existing files are not overwritten (`• exists` instead of `✓ wrote`)
+- If config can't be patched, CLI prints a snippet to paste
+- User must still register the op in `operations/index.ts` manually
 
 ## Key rules
 
@@ -233,7 +237,22 @@ donghanh build               widgets → manifest → server bundle
 - **structuredContent = authoritative**: always return updated snapshot on mutations so widget re-renders from truth.
 - **_meta is widget-only**: never visible to model. Don't put narration there.
 
-## Protocol references
+## References
+
+Up-to-date API docs for every package:
+
+- [donghanh.dev](https://donghanh.dev) — full framework docs
+- [donghanh.dev/reference/core](https://donghanh.dev/reference/core) — `@donghanh/core` primitives, registry, executor
+- [donghanh.dev/reference/hono](https://donghanh.dev/reference/hono) — `gptRoutes`, `mcpRoutes`, `chatRoutes`
+- [donghanh.dev/reference/widget](https://donghanh.dev/reference/widget) — widget runtime
+- [donghanh.dev/reference/widget-vite](https://donghanh.dev/reference/widget-vite) — Vite plugin
+- [donghanh.dev/reference/config](https://donghanh.dev/reference/config) — `defineConfig`
+- [donghanh.dev/reference/cli](https://donghanh.dev/reference/cli) — `donghanh` CLI
+- [donghanh.dev/reference/react](https://donghanh.dev/reference/react) — React hooks
+
+Prefer these over re-deriving from this skill — the site is generated from the current code.
+
+Apps SDK protocol docs:
 
 - [Apps SDK quickstart](https://developers.openai.com/apps-sdk/quickstart)
 - [Build MCP server](https://developers.openai.com/apps-sdk/build/mcp-server)

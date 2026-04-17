@@ -1,0 +1,15 @@
+{
+  "name": "@donghanh/config",
+  "version": "0.1.0",
+  "description": "defineConfig + loadConfig for donghanh.config.ts — single source of truth for operations, widgets, and server wiring",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rezzahub/donghanh",
+    "directory": "packages/config"
+  }
+}
