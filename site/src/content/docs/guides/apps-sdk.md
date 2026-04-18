@@ -116,11 +116,33 @@ Better Auth's `oidcProvider` plugin covers the authorization-server side.
 
 ## Testing with MCP Inspector
 
-Before hooking up ChatGPT, verify with [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
+Before hooking up ChatGPT, verify the protocol surface with [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
 
 ```bash
+# terminal 1 — start the template
+cd my-kanban-app
+npm run db:init    # first run only
+donghanh build     # or: npm run widgets
+npm run dev        # wrangler dev → http://localhost:8787
+
+# terminal 2 — attach Inspector
 npx @modelcontextprotocol/inspector@latest --server-url http://localhost:8787/mcp --transport http
 ```
+
+Walk each method in the Inspector UI and confirm:
+
+| Method | Expected |
+|---|---|
+| `initialize` | `protocolVersion: "2026-01-26"`, `capabilities.tools`, `capabilities.resources` (if widgets configured) |
+| `tools/list` | One tool per registered operation. `annotations` reflects `type`/`destructive`/`external`. `_meta.ui.resourceUri` + `_meta["openai/outputTemplate"]` present for ops with `widget` set. |
+| `resources/list` | One entry per widget. `mimeType: "text/html;profile=mcp-app"`. |
+| `resources/read` | Returns `contents[0].text` (widget HTML) + `_meta.ui.domain` + `_meta.ui.csp`. |
+| `tools/call` (no token, `auth: "required"`) | `isError: true` + `_meta["mcp/www_authenticate"]` containing `resource_metadata=...`. |
+| `tools/call` (`auth: "none"`) | Bypasses `authenticate`, returns `structuredContent`. |
+| `tools/call` (`auth: "optional"`, no token) | Proceeds with `ctx.userId === null`. |
+| `GET /.well-known/oauth-protected-resource` | Returns `resource`, `authorization_servers`, `scopes_supported`. |
+
+These same assertions are exercised as unit tests in [`packages/hono/src/mcp.test.ts`](https://github.com/rezzahub/donghanh/blob/main/packages/hono/src/mcp.test.ts) — run `just hono test` to re-run them locally. Inspector is for interactive exploration (editing JSON-RPC payloads, inspecting widget HTML, retrying with/without tokens); the unit tests guard against regressions.
 
 ## Submission
 

@@ -1,6 +1,6 @@
 {
   "name": "@donghanh/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "donghanh CLI — scaffold operations, widgets, and patch donghanh.config.ts",
   "license": "MIT",
   "type": "module",

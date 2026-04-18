@@ -42,6 +42,32 @@ donghanh operation delete-item --mutation
 
 You still need to register the op in `operations/index.ts` manually.
 
+### `donghanh build`
+
+Runs `vite build` via `bun x vite` in the directory containing `donghanh.config.ts`. Requires a `vite.config.ts` wired to `@donghanh/widget-vite`.
+
+```bash
+donghanh build
+```
+
+Output: widgets bundled to the `outDir` configured in the Vite plugin (for example, `manifest/`), plus a generated `manifest.js` consumed by `mcpRoutes({ widgets })`.
+
+Exits with code `1` if no `donghanh.config.ts` is found (walks up from cwd); otherwise propagates Vite's exit code.
+
+### `donghanh dev`
+
+Runs `vite build --watch` so widgets rebuild on change. The CLI does **not** start your server — run it in a separate terminal (for example, `wrangler dev`, `bun run dev`, `node --watch`).
+
+```bash
+# terminal 1
+donghanh dev
+
+# terminal 2
+npm run dev   # or: wrangler dev, bun run dev, etc.
+```
+
+Same config-missing behavior as `donghanh build`.
+
 ### `donghanh help`
 
 Prints usage summary.

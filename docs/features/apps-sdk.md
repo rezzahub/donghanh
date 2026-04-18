@@ -125,44 +125,44 @@ donghanh build               widgets → manifest → server bundle
 ## Phases
 
 ### Phase 1 — fix mcp.ts blockers
-- [ ] Add tool annotations (derive from `query`/`mutation` + new `destructive?` flag)
-- [ ] Per-op auth: `OperationConfig.auth` → per-tool `securitySchemes` + conditional authenticate
-- [ ] Add `resources/list` handler
-- [ ] Add `resources/read` handler
-- [ ] Single `widget` config on `mcpRoutes` (name + html + domain + csp)
-- [ ] Attach `_meta.ui.resourceUri` + `openai/outputTemplate` on tools
-- [ ] `ExecutorContext.userId` → `string | null` (or sentinel for anon)
-- [ ] Bump protocol version to `2026-01-26` (verify vs auth spec)
-- [ ] Test w/ MCP Inspector
-- [ ] Docs update in `site/src/content/docs/reference/hono.md`
+- [x] Add tool annotations (derive from `query`/`mutation` + new `destructive?` flag)
+- [x] Per-op auth: `OperationConfig.auth` → per-tool `securitySchemes` + conditional authenticate
+- [x] Add `resources/list` handler
+- [x] Add `resources/read` handler
+- [x] `widgets` map on `mcpRoutes` (`Record<name, { uri, html, domain?, csp? }>`)
+- [x] Attach `_meta.ui.resourceUri` + `openai/outputTemplate` on tools
+- [x] `ExecutorContext.userId` → `string | null` (or sentinel for anon)
+- [x] Bump protocol version to `2026-01-26` (verify vs auth spec)
+- [x] Test w/ MCP Inspector — automated equivalents in `packages/hono/src/mcp.test.ts`; manual Inspector walkthrough documented in `site/src/content/docs/guides/apps-sdk.md#testing-with-mcp-inspector`
+- [x] Docs update in `site/src/content/docs/reference/hono.md`
 
 ### Phase 2 — widget runtime + Vite plugin
-- [ ] `@donghanh/widget` package
+- [x] `@donghanh/widget` package
   - bridge (postMessage JSON-RPC init + rpc helpers)
   - hooks: `useToolResult`, `useCallTool`, `useSendMessage`, `useUpdateModelContext`
   - renderers: `<Display>`, `<Action>`, `<Form>`
   - `<DongHanhWidget />` default composition
-- [ ] `@donghanh/widget-vite` plugin
+- [x] `@donghanh/widget-vite` plugin
   - takes `entries: Record<name, path>`
   - bundles each with inline JS/CSS
   - content-hash URIs
   - emits manifest module
-- [ ] mcpRoutes multi-widget support (`widgets: Record<name, config>`)
-- [ ] `OperationConfig.widget?: string` reference by name
+- [x] mcpRoutes multi-widget support (`widgets: Record<name, config>`)
+- [x] `OperationConfig.widget?: string` reference by name
 
 ### Phase 3 — config + CLI
-- [ ] `@donghanh/config` defineConfig + loadConfig
-- [ ] `@donghanh/cli` scaffold commands
+- [x] `@donghanh/config` defineConfig + loadConfig
+- [x] `@donghanh/cli` scaffold commands
   - `donghanh widget <name>`
   - `donghanh operation <name>`
   - `donghanh dev`
   - `donghanh build`
-- [ ] Vite plugin + CLI both read donghanh.config
+- [x] Vite plugin + CLI both read donghanh.config
 
 ### Phase 4 — template migration
-- [ ] Update `kanban-gpt` template to use config + mcpRoutes + widget
-- [ ] Add Apps SDK setup guide to site docs
-- [ ] Bump `create-donghanh` version
+- [x] Update `kanban-gpt` template to use config + mcpRoutes + widget
+- [x] Add Apps SDK setup guide to site docs
+- [x] Bump `create-donghanh` version
 
 ## Open questions
 
