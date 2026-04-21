@@ -11,6 +11,12 @@ export interface GptRoutesConfig {
   authenticate: Authenticate;
   encodeVariables?: (vars: Record<string, unknown>) => string;
   responseSchemas?: Record<string, object>;
+  /**
+   * Include the compact operations list in `GET /operations/:name` responses
+   * so the model sees siblings when inspecting a single op. Default `false` —
+   * opt in when you want detail lookups to be self-sufficient.
+   */
+  includeOperationsInDetail?: boolean;
   /** Hook to enrich the JSON response (e.g. inject display text) */
   enrichResponse?: (
     result: Record<string, unknown>,
@@ -44,6 +50,7 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
     encodeVariables,
     responseSchemas,
     enrichResponse,
+    includeOperationsInDetail,
   } = config;
 
   const app = new Hono();
@@ -86,6 +93,9 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
       );
     }
 
+    if (includeOperationsInDetail) {
+      return c.json({ ...detail, operations: registry.list() });
+    }
     return c.json(detail);
   });
 

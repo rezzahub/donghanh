@@ -21,6 +21,12 @@ export interface GenerateOpenApiConfig {
   bearerSchemeName?: string;
   /** When true, adds an info note about the $variables encoding (default true). */
   describeVariables?: boolean;
+  /**
+   * When true, append a "Other operations" section listing sibling op ids +
+   * descriptions to each path's OpenAPI `description`. Helps ChatGPT Actions
+   * learn the full surface from any single path. Default false.
+   */
+  includeSiblingsInDescription?: boolean;
 }
 
 type Sec = Array<Record<string, string[]>>;
@@ -53,9 +59,19 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
     basePath = "",
     bearerSchemeName = "bearerAuth",
     describeVariables = true,
+    includeSiblingsInDescription = false,
   } = config;
 
   const ops = registry.list();
+
+  const siblingsBlock = includeSiblingsInDescription
+    ? `\n\nOther operations:\n${ops
+        .map(
+          (o) =>
+            `- \`${o.id}\` (${o.type}, auth: ${o.auth ?? "required"}) — ${o.description}`,
+        )
+        .join("\n")}`
+    : "";
   const paths: Record<string, PathItem> = {};
 
   const variablesParam = {
@@ -152,9 +168,10 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
     const entry: Operation = {
       operationId: `${method}_${op.id}`.replace(/[^A-Za-z0-9_]/g, "_"),
       summary: op.description,
-      description: detail?.instruction
-        ? `${op.description}\n\n${detail.instruction}`
-        : op.description,
+      description:
+        (detail?.instruction
+          ? `${op.description}\n\n${detail.instruction}`
+          : op.description) + siblingsBlock,
       security,
       responses: successResponse,
     };

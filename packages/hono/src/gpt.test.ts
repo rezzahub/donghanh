@@ -69,6 +69,57 @@ async function req(
   return { status: res.status, body };
 }
 
+describe("gptRoutes /operations/:name detail", () => {
+  test("by default returns only the op detail", async () => {
+    const app = gptRoutes({
+      registry: makeApp({
+        a: makeOp("a"),
+        b: makeOp("b"),
+      }),
+      executor: (async () => ({})) as Executor,
+      authenticate: async () => ({ userId: "x" }),
+    });
+    const { status, body } = await req(app, "/operations/a");
+    expect(status).toBe(200);
+    expect((body as { id: string }).id).toBe("a");
+    expect((body as { operations?: unknown }).operations).toBeUndefined();
+  });
+
+  test("includeOperationsInDetail appends siblings list", async () => {
+    const app = gptRoutes({
+      registry: makeApp({
+        a: makeOp("a", { auth: "required" }),
+        b: makeOp("b", { auth: "none" }),
+        c: makeOp("c", { auth: "optional" }),
+      }),
+      executor: (async () => ({})) as Executor,
+      authenticate: async () => ({ userId: "x" }),
+      includeOperationsInDetail: true,
+    });
+    const { body } = await req(app, "/operations/a");
+    const b = body as {
+      id: string;
+      operations: Array<{
+        id: string;
+        type: string;
+        auth?: string;
+        description: string;
+      }>;
+    };
+    expect(b.id).toBe("a");
+    expect(b.operations).toHaveLength(3);
+    // Each entry has name, auth (when set), description, type
+    const byId = Object.fromEntries(b.operations.map((o) => [o.id, o]));
+    expect(byId.a.auth).toBe("required");
+    expect(byId.b.auth).toBe("none");
+    expect(byId.c.auth).toBe("optional");
+    for (const o of b.operations) {
+      expect(typeof o.description).toBe("string");
+      expect(typeof o.type).toBe("string");
+    }
+  });
+});
+
 describe("gptRoutes /operations listing", () => {
   test("includes auth for each op when set", async () => {
     const registry = makeApp({

@@ -26,6 +26,7 @@ Returns a Hono app with routes:
 - `registry: Registry` — from `buildRegistry()`
 - `executor: Executor` — data fetching function
 - `authenticate: Authenticate` — returns `{ userId }` or error
+- `includeOperationsInDetail?: boolean` — when true, `GET /operations/:name` includes a siblings list (`operations: CompactOperation[]`) in its response. Each entry includes `id`, `type`, `description`, and `auth` (when set). Default `false`.
 
 **Per-op `auth` behavior** (derived from `OperationConfig.auth`, default `"required"`):
 
@@ -78,6 +79,7 @@ ChatGPT Actions upload this spec. The `/public` entries are callable without an 
 - `servers: { url, description? }[]`
 - `basePath?: string` — matches the prefix you mounted `gptRoutes` at, e.g. `"/api/gpt"`
 - `bearerSchemeName?: string` — defaults to `"bearerAuth"`
+- `includeSiblingsInDescription?: boolean` — append a markdown "Other operations" block (id, type, auth, description) to each path's OpenAPI `description`. Helps ChatGPT Actions learn the full surface from any single path. Default `false`.
 
 ## MCP Routes
 

@@ -1,6 +1,6 @@
 {
   "name": "@donghanh/hono",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Hono routes for GPT Store and LLM chat — renderers for ChatGPT and OpenAI-compatible APIs",
   "license": "MIT",
   "type": "module",

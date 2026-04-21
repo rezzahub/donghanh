@@ -160,6 +160,26 @@ describe("generateOpenApi", () => {
     ]);
   });
 
+  test("includeSiblingsInDescription appends sibling list to each path description", () => {
+    const spec = generateOpenApi({
+      registry: registry({
+        a: makeOp("a", { auth: "required" }),
+        b: makeOp("b", { auth: "none", type: "mutation" }),
+        c: makeOp("c", { auth: "optional" }),
+      }),
+      info,
+      servers,
+      basePath,
+      includeSiblingsInDescription: true,
+    }) as any;
+    const description = spec.paths["/api/gpt/query/a"].get.description;
+    expect(description).toContain("Other operations");
+    // Contains id, type, auth, and description for each sibling
+    expect(description).toContain("`a` (query, auth: required) — a desc");
+    expect(description).toContain("`b` (mutation, auth: none) — b desc");
+    expect(description).toContain("`c` (query, auth: optional) — c desc");
+  });
+
   test("custom bearerSchemeName", () => {
     const spec = generateOpenApi({
       registry: registry({ a: makeOp("a") }),
