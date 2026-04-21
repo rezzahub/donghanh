@@ -79,8 +79,9 @@ ChatGPT Actions upload this spec. The `/public` entries are callable without an 
 - `servers: { url, description? }[]`
 - `basePath?: string` — matches the prefix you mounted `gptRoutes` at, e.g. `"/api/gpt"`
 - `bearerSchemeName?: string` — defaults to `"bearerAuth"`
-- `includeSiblingsInDescription?: boolean` — append a markdown "Other operations" block (id, type, auth, description) to each path's OpenAPI `description`. Helps ChatGPT Actions learn the full surface from any single path. Default `false`.
-- `maxDescriptionLength?: number` — descriptions longer than this are truncated with an ellipsis. ChatGPT Actions rejects path descriptions over 300 characters, so the default is `300`. Summaries are always capped at 120 regardless.
+- `pathStyle?: "parametric" | "per-op"` — default `"parametric"`. Parametric collapses all ops under `/query/{operation}` + `/mutate/{operation}` with an enum on the `operation` path parameter — 2–4 paths total regardless of registry size. `"per-op"` emits one path per operation for richer ChatGPT Action discovery.
+- `includeDescription?: boolean` — default `false`. When off, only `summary` is emitted per path, keeping the spec compact and safely under ChatGPT Actions' 300-char description limit. Opt in when you want longer Action instructions in the OAS. (For listing sibling operations, use `includeOperationsInDetail` on `gptRoutes` instead — the GPT fetches `GET /operations/:name` to learn other available ops.)
+- `maxDescriptionLength?: number` — descriptions longer than this are truncated with an ellipsis. No effect when `includeDescription` is off. Defaults to `300`; summaries are always capped at 120 regardless.
 
 ## MCP Routes
 

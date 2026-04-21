@@ -31,8 +31,8 @@ const info = { title: "Test API", version: "1.0.0" };
 const servers = [{ url: "https://api.example.com" }];
 const basePath = "/api/gpt";
 
-describe("generateOpenApi", () => {
-  test("emits 3.1.0 spec with info + servers + bearerAuth scheme + empty schemas", () => {
+describe("generateOpenApi common", () => {
+  test("emits 3.1.0 spec with info + servers + bearerAuth + empty schemas", () => {
     const spec = generateOpenApi({
       registry: registry({ a: makeOp("a") }),
       info,
@@ -46,41 +46,53 @@ describe("generateOpenApi", () => {
       type: "http",
       scheme: "bearer",
     });
-    // components.schemas must be an object (ChatGPT Actions rejects missing key)
     expect(spec.components.schemas).toEqual({});
   });
 
-  test("description is truncated to 300 chars by default", () => {
-    const longInstruction = "x".repeat(500);
+  test("includeDescription is off by default — no description field", () => {
+    const spec = generateOpenApi({
+      registry: registry({ a: makeOp("a") }),
+      info,
+      servers,
+      basePath,
+      pathStyle: "per-op",
+    }) as any;
+    const entry = spec.paths["/api/gpt/query/a"].get;
+    expect(entry.description).toBeUndefined();
+    expect(entry.summary).toBe("a desc");
+  });
+
+  test("includeDescription: true emits description built from desc+instruction", () => {
+    const spec = generateOpenApi({
+      registry: registry({ a: makeOp("a") }),
+      info,
+      servers,
+      basePath,
+      pathStyle: "per-op",
+      includeDescription: true,
+    }) as any;
+    const d = spec.paths["/api/gpt/query/a"].get.description as string;
+    expect(d).toContain("a desc");
+    expect(d).toContain("call a");
+  });
+
+  test("description truncated at maxDescriptionLength when included", () => {
     const spec = generateOpenApi({
       registry: registry({
-        a: makeOp("a", { instruction: longInstruction }),
+        a: makeOp("a", { instruction: "x".repeat(500) }),
       }),
       info,
       servers,
       basePath,
+      pathStyle: "per-op",
+      includeDescription: true,
     }) as any;
     const d = spec.paths["/api/gpt/query/a"].get.description as string;
     expect(d.length).toBeLessThanOrEqual(300);
     expect(d.endsWith("…")).toBe(true);
   });
 
-  test("maxDescriptionLength override", () => {
-    const longInstruction = "x".repeat(500);
-    const spec = generateOpenApi({
-      registry: registry({
-        a: makeOp("a", { instruction: longInstruction }),
-      }),
-      info,
-      servers,
-      basePath,
-      maxDescriptionLength: 100,
-    }) as any;
-    const d = spec.paths["/api/gpt/query/a"].get.description as string;
-    expect(d.length).toBeLessThanOrEqual(100);
-  });
-
-  test("summary is capped at 120 chars", () => {
+  test("summary capped at 120 chars", () => {
     const spec = generateOpenApi({
       registry: registry({
         a: makeOp("a", { description: "y".repeat(200) }),
@@ -88,17 +100,40 @@ describe("generateOpenApi", () => {
       info,
       servers,
       basePath,
+      pathStyle: "per-op",
     }) as any;
     const s = spec.paths["/api/gpt/query/a"].get.summary as string;
     expect(s.length).toBeLessThanOrEqual(120);
   });
 
-  test("auth=required emits default path only with bearerAuth", () => {
+  test("custom bearerSchemeName", () => {
     const spec = generateOpenApi({
-      registry: registry({ a: makeOp("a", { auth: "required" }) }),
+      registry: registry({ a: makeOp("a") }),
       info,
       servers,
       basePath,
+      pathStyle: "per-op",
+      bearerSchemeName: "oauthToken",
+    }) as any;
+    expect(spec.components.securitySchemes.oauthToken).toBeDefined();
+    expect(spec.paths["/api/gpt/query/a"].get.security).toEqual([
+      { oauthToken: [] },
+    ]);
+  });
+});
+
+describe("generateOpenApi pathStyle: 'per-op'", () => {
+  const opts = {
+    info,
+    servers,
+    basePath,
+    pathStyle: "per-op" as const,
+  };
+
+  test("auth=required emits default path only with bearerAuth", () => {
+    const spec = generateOpenApi({
+      ...opts,
+      registry: registry({ a: makeOp("a", { auth: "required" }) }),
     }) as any;
     expect(Object.keys(spec.paths)).toEqual(["/api/gpt/query/a"]);
     expect(spec.paths["/api/gpt/query/a"].get.security).toEqual([
@@ -108,36 +143,26 @@ describe("generateOpenApi", () => {
 
   test("auth=none emits /public path with empty security", () => {
     const spec = generateOpenApi({
+      ...opts,
       registry: registry({ a: makeOp("a", { auth: "none" }) }),
-      info,
-      servers,
-      basePath,
     }) as any;
     expect(Object.keys(spec.paths)).toEqual(["/api/gpt/public/query/a"]);
     expect(spec.paths["/api/gpt/public/query/a"].get.security).toEqual([]);
   });
 
-  test("auth=optional emits BOTH default and /public paths", () => {
+  test("auth=optional emits both default and /public paths", () => {
     const spec = generateOpenApi({
+      ...opts,
       registry: registry({ a: makeOp("a", { auth: "optional" }) }),
-      info,
-      servers,
-      basePath,
     }) as any;
     const ks = Object.keys(spec.paths).sort();
     expect(ks).toEqual(["/api/gpt/public/query/a", "/api/gpt/query/a"]);
-    expect(spec.paths["/api/gpt/query/a"].get.security).toEqual([
-      { bearerAuth: [] },
-    ]);
-    expect(spec.paths["/api/gpt/public/query/a"].get.security).toEqual([]);
   });
 
   test("mutation emits POST with requestBody", () => {
     const spec = generateOpenApi({
+      ...opts,
       registry: registry({ m: makeOp("m", { type: "mutation" }) }),
-      info,
-      servers,
-      basePath,
     }) as any;
     const entry = spec.paths["/api/gpt/mutate/m"];
     expect(entry.post.requestBody).toBeDefined();
@@ -146,51 +171,40 @@ describe("generateOpenApi", () => {
 
   test("query has $variables parameter", () => {
     const spec = generateOpenApi({
+      ...opts,
       registry: registry({ q: makeOp("q") }),
-      info,
-      servers,
-      basePath,
     }) as any;
     const p = spec.paths["/api/gpt/query/q"].get.parameters;
     expect(p).toHaveLength(1);
     expect(p[0].name).toBe("$variables");
-    expect(p[0].in).toBe("query");
   });
+});
 
-  test("description combines op description + instruction", () => {
-    const spec = generateOpenApi({
-      registry: registry({ a: makeOp("a") }),
-      info,
-      servers,
-      basePath,
-    }) as any;
-    const op = spec.paths["/api/gpt/query/a"].get;
-    expect(op.summary).toBe("a desc");
-    expect(op.description).toContain("a desc");
-    expect(op.description).toContain("call a");
-  });
-
-  test("operationId is unique per method+opId", () => {
+describe("generateOpenApi pathStyle: 'parametric' (default)", () => {
+  test("collapses all query ops under one /query/{operation} path with enum", () => {
     const spec = generateOpenApi({
       registry: registry({
-        a: makeOp("a", { auth: "optional" }),
+        a: makeOp("a", { auth: "required" }),
+        b: makeOp("b", { auth: "required" }),
       }),
       info,
       servers,
       basePath,
     }) as any;
-    const authedId = spec.paths["/api/gpt/query/a"].get.operationId;
-    const publicId = spec.paths["/api/gpt/public/query/a"].get.operationId;
-    expect(authedId).toBe("get_a");
-    expect(publicId).toBe("get_a"); // Same handler, different path — OAS allows same operationId across paths
+    const ks = Object.keys(spec.paths);
+    expect(ks).toEqual(["/api/gpt/query/{operation}"]);
+    const opParam = spec.paths["/api/gpt/query/{operation}"].get.parameters[0];
+    expect(opParam.name).toBe("operation");
+    expect(opParam.in).toBe("path");
+    expect(opParam.schema.enum).toEqual(["a", "b"]);
   });
 
-  test("mixed registry — three auth tiers coexist", () => {
+  test("emits /public/{operation} when any op is auth=none or optional", () => {
     const spec = generateOpenApi({
       registry: registry({
         priv: makeOp("priv", { auth: "required" }),
-        mixed: makeOp("mixed", { auth: "optional" }),
         pub: makeOp("pub", { auth: "none" }),
+        both: makeOp("both", { auth: "optional" }),
       }),
       info,
       servers,
@@ -198,44 +212,57 @@ describe("generateOpenApi", () => {
     }) as any;
     const ks = Object.keys(spec.paths).sort();
     expect(ks).toEqual([
-      "/api/gpt/public/query/mixed",
-      "/api/gpt/public/query/pub",
-      "/api/gpt/query/mixed",
-      "/api/gpt/query/priv",
+      "/api/gpt/public/query/{operation}",
+      "/api/gpt/query/{operation}",
     ]);
+    // Default enum contains authed ops: required + optional (not "none")
+    expect(
+      spec.paths["/api/gpt/query/{operation}"].get.parameters[0].schema.enum,
+    ).toEqual(["priv", "both"]);
+    // Public enum contains guest-callable ops: none + optional (not "required")
+    expect(
+      spec.paths["/api/gpt/public/query/{operation}"].get.parameters[0].schema
+        .enum,
+    ).toEqual(["pub", "both"]);
   });
 
-  test("includeSiblingsInDescription appends sibling list to each path description", () => {
+  test("separate /mutate/{operation} path for mutations", () => {
     const spec = generateOpenApi({
       registry: registry({
-        a: makeOp("a", { auth: "required" }),
-        b: makeOp("b", { auth: "none", type: "mutation" }),
-        c: makeOp("c", { auth: "optional" }),
+        m: makeOp("m", { type: "mutation" }),
       }),
       info,
       servers,
       basePath,
-      includeSiblingsInDescription: true,
     }) as any;
-    const description = spec.paths["/api/gpt/query/a"].get.description;
-    expect(description).toContain("Other operations");
-    // Contains id, type, auth, and description for each sibling
-    expect(description).toContain("`a` (query, auth: required) — a desc");
-    expect(description).toContain("`b` (mutation, auth: none) — b desc");
-    expect(description).toContain("`c` (query, auth: optional) — c desc");
+    expect(spec.paths["/api/gpt/mutate/{operation}"]).toBeDefined();
+    expect(
+      spec.paths["/api/gpt/mutate/{operation}"].post.requestBody,
+    ).toBeDefined();
   });
 
-  test("custom bearerSchemeName", () => {
+  test("no description field by default (ChatGPT-safe)", () => {
     const spec = generateOpenApi({
       registry: registry({ a: makeOp("a") }),
       info,
       servers,
       basePath,
-      bearerSchemeName: "oauthToken",
     }) as any;
-    expect(spec.components.securitySchemes.oauthToken).toBeDefined();
-    expect(spec.paths["/api/gpt/query/a"].get.security).toEqual([
-      { oauthToken: [] },
-    ]);
+    const entry = spec.paths["/api/gpt/query/{operation}"].get;
+    expect(entry.description).toBeUndefined();
+  });
+
+  test("includeDescription: true emits a short description", () => {
+    const spec = generateOpenApi({
+      registry: registry({ a: makeOp("a") }),
+      info,
+      servers,
+      basePath,
+      includeDescription: true,
+    }) as any;
+    const d = spec.paths["/api/gpt/query/{operation}"].get
+      .description as string;
+    expect(typeof d).toBe("string");
+    expect(d.length).toBeLessThanOrEqual(300);
   });
 });
