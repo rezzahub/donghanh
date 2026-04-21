@@ -1,0 +1,78 @@
+# donghanh
+
+> Conversational UI framework. Build agent interfaces with JSX — operations declare what the agent sees with a `<Brief>` HUD, and a single operation tree renders to three targets: ChatGPT GPT Store (gptRoutes + OpenAPI), ChatGPT Apps SDK (mcpRoutes + widget iframe), and self-hosted React chat (chatRoutes + @donghanh/react).
+
+donghanh is a TypeScript/JSX framework for building AI agent apps on Cloudflare Workers (or any Hono-compatible runtime). An **operation** is a screen — it defines a query/mutation handler and a component that returns a Brief of `<Message>`, `<Display>`, `<Action>`, and `<Form>` primitives. The same operation registry powers three adapters so you ship one codebase and deploy to multiple surfaces.
+
+Versions current at time of writing: `@donghanh/core@0.3.0`, `@donghanh/hono@0.3.2`, `@donghanh/react@0.3.0`, `@donghanh/widget@0.1.0`, `@donghanh/widget-vite@0.1.0`, `@donghanh/config@0.1.0`, `@donghanh/cli@0.2.0`, `create-donghanh@0.5.0`.
+
+## Get started
+
+- [Quickstart](https://donghanh.dev/guides/quickstart): scaffold an app with `bunx create-donghanh my-app`, wire deps, run `bun run dev`.
+- [Introduction](https://donghanh.dev/guides/introduction): core mental model — Brief, operations, executor, adapters.
+- [ChatGPT Apps SDK](https://donghanh.dev/guides/apps-sdk): deploy as an MCP connector with an iframe widget.
+
+## Concepts
+
+- [Operations](https://donghanh.dev/concepts/operations): one .tsx per op. `registerOperation(Component, config)` attaches `id`, `type: "query" | "mutation"`, `description`, `instruction`, `input` (JSON Schema), `responseKey`, `auth: "none" | "optional" | "required"`, `widget`, `destructive`, `external`.
+- [Primitives](https://donghanh.dev/concepts/primitives): `<Brief>`, `<Message>`, `<Display>`, `<Action>`, `<Form>`, `<Context>`. `<Brief>` is the agent HUD — not shown to users directly.
+- [Renderers](https://donghanh.dev/concepts/renderers): `renderForChatGpt`, `renderForLlm` project the Brief into target-specific shapes.
+- [Executor](https://donghanh.dev/concepts/executor): `(operationId, variables, ctx) => Promise<data>` — the only function you write for data fetching. `ctx.userId: string | null`.
+
+## Packages
+
+- [@donghanh/core](https://donghanh.dev/reference/core): JSX runtime, primitives, `buildRegistry`, `registerOperation`, `executeOperation`.
+- [@donghanh/hono](https://donghanh.dev/reference/hono): `gptRoutes` (GPT Store + `/public/*` for guest ops), `mcpRoutes` (Apps SDK), `chatRoutes` (self-hosted LLM chat), `generateOpenApi` (OpenAPI 3.1 from registry).
+- [@donghanh/react](https://donghanh.dev/reference/react): `DongHanhProvider`, `useChat`, `useInitOperation` for self-hosted chat UIs.
+- [@donghanh/widget](https://donghanh.dev/reference/widget): iframe runtime for Apps SDK widgets — MCP postMessage bridge, React hooks (`useToolResult`, `useCallTool`, `useSendMessage`, `useUpdateModelContext`), default renderers.
+- [@donghanh/widget-vite](https://donghanh.dev/reference/widget-vite): Vite plugin that bundles widgets into inline HTML with content-hashed URIs + manifest.
+- [@donghanh/config](https://donghanh.dev/reference/config): `defineConfig`, `loadConfig`, `findConfig` for `donghanh.config.ts`.
+- [@donghanh/cli](https://donghanh.dev/reference/cli): `donghanh widget <name>`, `donghanh operation <name> [--mutation]`, `donghanh build`, `donghanh dev`.
+
+## Auth posture per operation
+
+Each op declares `auth`:
+
+- `"required"` (default) — `gptRoutes` returns 401 on missing/bad token at `/query/...`; hidden from `/public/...`.
+- `"optional"` — `/query/...` falls back to `userId: "anonymous"` on bad token; `/public/...` behaves identically; both paths available.
+- `"none"` — `authenticate` is **not called** even if a token is sent. Served from `/public/...`; default path returns anonymous.
+
+`generateOpenApi` mirrors this: `required` emits authed path only, `none` emits `/public/...` only, `optional` emits both. This lets ChatGPT Actions upload one spec where the `/public` paths have `security: []` and work without OAuth, while the authed paths drive the linked-user flow.
+
+## Widgets (ChatGPT Apps SDK)
+
+Operations with `widget: "name"` get an iframe in ChatGPT. `@donghanh/widget-vite` bundles widget entries into inline HTML (JS + CSS inlined, content-hashed URI) and emits a manifest module:
+
+```ts
+import { widgets } from "./manifest/manifest";
+
+mcpRoutes({
+  registry, executor, authenticate,
+  resource: "https://your-app.example.com",
+  authorizationServers: ["https://auth.example.com"],
+  widgets,
+});
+```
+
+Widget renders `structuredContent` from the MCP tool result. The default `DongHanhWidget` component auto-renders Display / Actions / Forms; custom widgets use the hooks.
+
+## Conventions
+
+- File-per-op: `operations/<id>.tsx` — default export is `registerOperation(...)`.
+- Kebab-case ids: `list-boards` → component `ListBoards`, responseKey `listBoards`.
+- `donghanh.config.ts` at project root holds operations glob, widget entries, server defaults (resource, CSP, domain).
+- Templates ship a manifest placeholder so the worker compiles before the first widget build.
+- `just` recipes for monorepo dev: `just test`, `just lint`, `just <pkg> <script>`, `just publish <target> <otp>`.
+
+## Examples
+
+- [Tán Đồng (splitbee)](https://github.com/vuadu/splitbee): production bill-splitting app — 14 operations, GPT Store, chat UI, i18n via Lingui, dynamic rule creation via email ingestion.
+- `kanban-gpt` template (ships with `create-donghanh`): 6 operations, Better Auth + D1, both gptRoutes and mcpRoutes mounted.
+- `minimal` template: 2 operations, D1 SQLite.
+
+## External
+
+- [Repository](https://github.com/rezzahub/donghanh)
+- [MCP specification](https://modelcontextprotocol.io)
+- [Apps SDK docs](https://developers.openai.com/apps-sdk)
+- [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) (OAuth 2.0 Protected Resource Metadata)
