@@ -80,6 +80,7 @@ ChatGPT Actions upload this spec. The `/public` entries are callable without an 
 - `basePath?: string` — matches the prefix you mounted `gptRoutes` at, e.g. `"/api/gpt"`
 - `bearerSchemeName?: string` — defaults to `"bearerAuth"`
 - `includeSiblingsInDescription?: boolean` — append a markdown "Other operations" block (id, type, auth, description) to each path's OpenAPI `description`. Helps ChatGPT Actions learn the full surface from any single path. Default `false`.
+- `maxDescriptionLength?: number` — descriptions longer than this are truncated with an ellipsis. ChatGPT Actions rejects path descriptions over 300 characters, so the default is `300`. Summaries are always capped at 120 regardless.
 
 ## MCP Routes
 

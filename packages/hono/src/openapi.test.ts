@@ -32,7 +32,7 @@ const servers = [{ url: "https://api.example.com" }];
 const basePath = "/api/gpt";
 
 describe("generateOpenApi", () => {
-  test("emits 3.1.0 spec with info + servers + bearerAuth scheme", () => {
+  test("emits 3.1.0 spec with info + servers + bearerAuth scheme + empty schemas", () => {
     const spec = generateOpenApi({
       registry: registry({ a: makeOp("a") }),
       info,
@@ -46,6 +46,51 @@ describe("generateOpenApi", () => {
       type: "http",
       scheme: "bearer",
     });
+    // components.schemas must be an object (ChatGPT Actions rejects missing key)
+    expect(spec.components.schemas).toEqual({});
+  });
+
+  test("description is truncated to 300 chars by default", () => {
+    const longInstruction = "x".repeat(500);
+    const spec = generateOpenApi({
+      registry: registry({
+        a: makeOp("a", { instruction: longInstruction }),
+      }),
+      info,
+      servers,
+      basePath,
+    }) as any;
+    const d = spec.paths["/api/gpt/query/a"].get.description as string;
+    expect(d.length).toBeLessThanOrEqual(300);
+    expect(d.endsWith("…")).toBe(true);
+  });
+
+  test("maxDescriptionLength override", () => {
+    const longInstruction = "x".repeat(500);
+    const spec = generateOpenApi({
+      registry: registry({
+        a: makeOp("a", { instruction: longInstruction }),
+      }),
+      info,
+      servers,
+      basePath,
+      maxDescriptionLength: 100,
+    }) as any;
+    const d = spec.paths["/api/gpt/query/a"].get.description as string;
+    expect(d.length).toBeLessThanOrEqual(100);
+  });
+
+  test("summary is capped at 120 chars", () => {
+    const spec = generateOpenApi({
+      registry: registry({
+        a: makeOp("a", { description: "y".repeat(200) }),
+      }),
+      info,
+      servers,
+      basePath,
+    }) as any;
+    const s = spec.paths["/api/gpt/query/a"].get.summary as string;
+    expect(s.length).toBeLessThanOrEqual(120);
   });
 
   test("auth=required emits default path only with bearerAuth", () => {

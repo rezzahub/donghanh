@@ -27,6 +27,17 @@ export interface GenerateOpenApiConfig {
    * learn the full surface from any single path. Default false.
    */
   includeSiblingsInDescription?: boolean;
+  /**
+   * Max length for each path's OpenAPI `description`. ChatGPT Actions rejects
+   * descriptions over 300 characters. Longer text is truncated with an
+   * ellipsis. Defaults to 300.
+   */
+  maxDescriptionLength?: number;
+}
+
+function truncate(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return `${s.slice(0, Math.max(0, max - 1))}…`;
 }
 
 type Sec = Array<Record<string, string[]>>;
@@ -60,6 +71,7 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
     bearerSchemeName = "bearerAuth",
     describeVariables = true,
     includeSiblingsInDescription = false,
+    maxDescriptionLength = 300,
   } = config;
 
   const ops = registry.list();
@@ -165,13 +177,14 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
       .split(/[-_]/)
       .map((s) => (s ? s[0].toUpperCase() + s.slice(1) : ""))
       .join("");
+    const fullDescription =
+      (detail?.instruction
+        ? `${op.description}\n\n${detail.instruction}`
+        : op.description) + siblingsBlock;
     const entry: Operation = {
       operationId: `${method}_${op.id}`.replace(/[^A-Za-z0-9_]/g, "_"),
-      summary: op.description,
-      description:
-        (detail?.instruction
-          ? `${op.description}\n\n${detail.instruction}`
-          : op.description) + siblingsBlock,
+      summary: truncate(op.description, 120),
+      description: truncate(fullDescription, maxDescriptionLength),
       security,
       responses: successResponse,
     };
@@ -223,6 +236,7 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
     servers,
     paths,
     components: {
+      schemas: {},
       securitySchemes: {
         [bearerSchemeName]: {
           type: "http",
