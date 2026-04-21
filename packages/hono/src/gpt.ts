@@ -24,6 +24,11 @@ export interface GptRoutesConfig {
   ) => Promise<void>;
 }
 
+/** Sentinel used when a request runs without an authenticated user. */
+const ANONYMOUS: string = "anonymous";
+
+type AuthMode = "none" | "optional" | "required";
+
 function jsonError(message: string, status = 400): Response {
   return new Response(JSON.stringify({ errors: [{ message }] }), {
     status,
@@ -43,7 +48,7 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
 
   const app = new Hono();
 
-  // List operations
+  // List operations (auth advertised per-op)
   app.get("/operations", (c) => {
     const url = new URL(c.req.url);
     const search = url.searchParams.get("search")?.toLowerCase();
@@ -84,11 +89,36 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
     return c.json(detail);
   });
 
-  // Execute query
-  app.get("/query/:operation", async (c) => {
-    const authResult = await authenticate(c.req.raw);
-    if (isAuthError(authResult)) return authResult.error;
+  /**
+   * Resolve the userId to execute with, given the op's auth posture and the
+   * inbound request. Returns either a string userId or a Response to short-circuit.
+   */
+  async function resolveUser(
+    request: Request,
+    authMode: AuthMode,
+    public_: boolean,
+  ): Promise<string | Response> {
+    // auth: "none" — always anonymous, never call authenticate
+    if (authMode === "none") return ANONYMOUS;
 
+    // Public sub-router: be lenient — swallow errors, fall back to anonymous
+    if (public_) {
+      const result = await authenticate(request);
+      if (isAuthError(result)) return ANONYMOUS;
+      return result.userId;
+    }
+
+    // Default path: propagate auth error when required; swallow when optional
+    const result = await authenticate(request);
+    if (isAuthError(result)) {
+      if (authMode === "optional") return ANONYMOUS;
+      return result.error;
+    }
+    return result.userId;
+  }
+
+  // Execute query (default)
+  app.get("/query/:operation", async (c) => {
     const operationId = c.req.param("operation");
     const op = registry.get(operationId);
 
@@ -103,17 +133,18 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
       );
     }
 
-    return handleExecution(c.req.raw, authResult.userId, operationId, () => {
+    const authMode: AuthMode = op.operationConfig.auth ?? "required";
+    const user = await resolveUser(c.req.raw, authMode, false);
+    if (user instanceof Response) return user;
+
+    return handleExecution(c.req.raw, user, operationId, () => {
       const url = new URL(c.req.url);
       return url.searchParams.get("$variables") ?? undefined;
     });
   });
 
-  // Execute mutation
+  // Execute mutation (default)
   app.post("/mutate/:operation", async (c) => {
-    const authResult = await authenticate(c.req.raw);
-    if (isAuthError(authResult)) return authResult.error;
-
     const operationId = c.req.param("operation");
     const op = registry.get(operationId);
 
@@ -128,15 +159,73 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
       );
     }
 
-    return handleExecution(
-      c.req.raw,
-      authResult.userId,
-      operationId,
-      async () => {
-        const body = await c.req.json();
-        return body.$variables;
-      },
-    );
+    const authMode: AuthMode = op.operationConfig.auth ?? "required";
+    const user = await resolveUser(c.req.raw, authMode, false);
+    if (user instanceof Response) return user;
+
+    return handleExecution(c.req.raw, user, operationId, async () => {
+      const body = await c.req.json();
+      return body.$variables;
+    });
+  });
+
+  // ---------- /public sub-paths ----------
+  // OAS-friendly no-auth surface. Rejects ops whose auth posture is "required".
+
+  const notFound404 = (body: { error: string }): Response =>
+    new Response(JSON.stringify(body), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+
+  app.get("/public/query/:operation", async (c) => {
+    const operationId = c.req.param("operation");
+    const op = registry.get(operationId);
+    if (!op) {
+      return notFound404({ error: "Operation not found or requires auth." });
+    }
+    const authMode: AuthMode = op.operationConfig.auth ?? "required";
+    if (authMode === "required") {
+      return notFound404({ error: "Operation not found or requires auth." });
+    }
+    if (op.operationConfig.type !== "query") {
+      return jsonError(
+        `"${operationId}" is a mutation. Use POST /public/mutate/${operationId} instead.`,
+      );
+    }
+
+    const user = await resolveUser(c.req.raw, authMode, true);
+    if (user instanceof Response) return user;
+
+    return handleExecution(c.req.raw, user, operationId, () => {
+      const url = new URL(c.req.url);
+      return url.searchParams.get("$variables") ?? undefined;
+    });
+  });
+
+  app.post("/public/mutate/:operation", async (c) => {
+    const operationId = c.req.param("operation");
+    const op = registry.get(operationId);
+    if (!op) {
+      return notFound404({ error: "Operation not found or requires auth." });
+    }
+    const authMode: AuthMode = op.operationConfig.auth ?? "required";
+    if (authMode === "required") {
+      return notFound404({ error: "Operation not found or requires auth." });
+    }
+    if (op.operationConfig.type !== "mutation") {
+      return jsonError(
+        `"${operationId}" is a query. Use GET /public/query/${operationId} instead.`,
+      );
+    }
+
+    const user = await resolveUser(c.req.raw, authMode, true);
+    if (user instanceof Response) return user;
+
+    return handleExecution(c.req.raw, user, operationId, async () => {
+      const body = await c.req.json();
+      return body.$variables;
+    });
   });
 
   async function handleExecution(
@@ -153,20 +242,11 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
     }
 
     let variables: Record<string, unknown> = {};
-    if (typeof rawVariables === "string" && encodeVariables) {
-      // Decode using the inverse - we expect TOON format
-      // The app provides its own decode in the executor or via a decode option
-      // For now, pass raw through and let the executor handle it
-    }
 
-    // We need a decode function. Let's accept raw variables as TOON or JSON.
     if (typeof rawVariables === "string") {
       try {
-        // Try JSON first
         variables = JSON.parse(rawVariables);
       } catch {
-        // Pass as-is, let the app's decode handle it
-        // Store raw so executor can decode
         variables = { $raw: rawVariables };
       }
     }
@@ -180,7 +260,6 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
         context: { userId, request },
       });
 
-      // Render JSX tree through ChatGPT renderer
       const rendered = renderForChatGpt(brief, {
         encodeVariables,
         getOperationInput: (id) => {
@@ -189,7 +268,6 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
         },
       });
 
-      // Build response
       const result: Record<string, unknown> = {
         data: {
           [registry.get(operationId)!.operationConfig.responseKey]: data,
@@ -203,7 +281,6 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
         result.nextSteps = rendered.nextSteps;
       }
 
-      // Enrich response (inject display, etc)
       if (enrichResponse) {
         await enrichResponse(result, {
           operationId,
@@ -214,12 +291,10 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
         });
       }
 
-      // Include response schema for start
       if (operationId === "start" && responseSchemas?.start) {
         result.responseSchema = responseSchemas.start;
       }
 
-      // Always include operations list
       result.operations = registry.list();
 
       return new Response(JSON.stringify(result), {
@@ -232,7 +307,6 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
         errors: [{ message }],
       };
 
-      // Include operation detail for self-correction
       const detail = registry.detail(operationId);
       if (detail) {
         errorResult.operationDetail = {

@@ -5,6 +5,7 @@ export interface CompactOperation {
   id: string;
   type: "query" | "mutation";
   description: string;
+  auth?: "none" | "optional" | "required";
 }
 
 export interface OperationDetail {
@@ -40,11 +41,15 @@ export function buildRegistry(
 
   return {
     list(): CompactOperation[] {
-      return Array.from(map.values()).map((op) => ({
-        id: op.operationConfig.id,
-        type: op.operationConfig.type,
-        description: op.operationConfig.description,
-      }));
+      return Array.from(map.values()).map((op) => {
+        const entry: CompactOperation = {
+          id: op.operationConfig.id,
+          type: op.operationConfig.type,
+          description: op.operationConfig.description,
+        };
+        if (op.operationConfig.auth) entry.auth = op.operationConfig.auth;
+        return entry;
+      });
     },
 
     detail(name: string): OperationDetail | null {

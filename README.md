@@ -82,6 +82,32 @@ your-app/
 
 **Operations are components** — each `.tsx` file receives `{ data, variables }` and returns a `<Brief>`. Metadata is attached via `registerOperation()`.
 
+## Auth tiers (gptRoutes)
+
+Each operation declares an `auth` posture. `gptRoutes` enforces it per-op and exposes a dedicated `/public` sub-path for ops that don't require auth:
+
+| `auth` value | Default route behavior | `/public` route behavior |
+|---|---|---|
+| `"required"` (default) | `authenticate()` → 401 on failure | 404 — not exposed |
+| `"optional"` | `authenticate()` on failure → anonymous | 200 anonymous (swallows bad tokens) |
+| `"none"` | Skip `authenticate()` → anonymous | 200 anonymous |
+
+```ts
+// A public op — callable by anyone, inside or outside ChatGPT OAuth
+registerOperation(CheckOffer, {
+  id: "check-offer",
+  type: "query",
+  auth: "none",
+  // ...
+});
+
+// Request either:
+// GET /api/gpt/query/check-offer               → 200 anonymous
+// GET /api/gpt/public/query/check-offer        → 200 anonymous (OAS-friendly, no Bearer needed)
+```
+
+For ChatGPT Actions in particular: point the Action's path at `/public/...` when you want a guest-callable endpoint, and at the default path when you want the auth-required variant. This sidesteps OpenAPI's all-or-nothing per-path security model.
+
 ## Reference
 
 [Tán Đồng](https://github.com/vuadu/splitbee) — bill-splitting app built with @donghanh. 14 operations, GPT Store integration, in-app chat assistant.

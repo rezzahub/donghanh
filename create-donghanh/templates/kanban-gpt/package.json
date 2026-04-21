@@ -11,8 +11,8 @@
     "widgets": "vite build"
   },
   "dependencies": {
-    "@donghanh/core": "^0.2.0",
-    "@donghanh/hono": "^0.2.0",
+    "@donghanh/core": "^0.3.0",
+    "@donghanh/hono": "^0.3.0",
     "@donghanh/config": "^0.1.0",
     "@donghanh/widget": "^0.1.0",
     "better-auth": "^1.4.0",

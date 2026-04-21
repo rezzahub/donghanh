@@ -15,15 +15,35 @@ Returns a Hono app with routes:
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `/operations` | GET | List all operations |
-| `/operations/:name` | GET | Operation detail (instruction, input schema) |
-| `/query/:operation` | GET | Execute a query operation |
-| `/mutate/:operation` | POST | Execute a mutation operation |
+| `/operations` | GET | List all operations (each includes `auth` when set) |
+| `/operations/:name` | GET | Operation detail (instruction, input schema, auth) |
+| `/query/:operation` | GET | Execute a query operation — honors `OperationConfig.auth` |
+| `/mutate/:operation` | POST | Execute a mutation — honors `OperationConfig.auth` |
+| `/public/query/:operation` | GET | Public query — 404 if op's `auth === "required"` |
+| `/public/mutate/:operation` | POST | Public mutation — 404 if op's `auth === "required"` |
 
 **Config:**
 - `registry: Registry` — from `buildRegistry()`
 - `executor: Executor` — data fetching function
 - `authenticate: Authenticate` — returns `{ userId }` or error
+
+**Per-op `auth` behavior** (derived from `OperationConfig.auth`, default `"required"`):
+
+| `auth` | Default path (`/query` / `/mutate`) | Public path (`/public/...`) |
+|---|---|---|
+| `"required"` | 401 on missing/invalid token | 404 (not exposed) |
+| `"optional"` | Calls `authenticate`; on error → `userId: "anonymous"`; on success → real `userId` | Same lenient behavior |
+| `"none"` | `authenticate` is **not called**; `userId: "anonymous"` even if a token is present | 200 anonymous |
+
+**Why `/public`?** ChatGPT Actions use OpenAPI security schemes that are per-path, not per-operation. The `/public` sub-path gives OAS-driven clients an unambiguous no-auth surface — they can point an Action at `/public/query/check-offer` without triggering an OAuth prompt, while `/query/check-offer` continues to work for first-party callers.
+
+The compact listing (`GET /operations`) advertises each op's `auth` field so clients can route requests to the right path:
+
+```ts
+{ id: "start",       type: "query", description: "...", auth: "optional" }
+{ id: "check-offer", type: "query", description: "...", auth: "none" }
+{ id: "my-balance",  type: "query", description: "..." }   // auth omitted = "required"
+```
 
 ## MCP Routes
 

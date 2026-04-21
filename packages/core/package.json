@@ -1,6 +1,6 @@
 {
   "name": "@donghanh/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Custom JSX runtime for conversational UI — primitives, registry, executor",
   "license": "MIT",
   "type": "module",

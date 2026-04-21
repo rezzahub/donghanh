@@ -10,8 +10,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@donghanh/core": "^0.1.1",
-    "@donghanh/hono": "^0.1.1",
+    "@donghanh/core": "^0.3.0",
+    "@donghanh/hono": "^0.3.0",
     "hono": "^4.7.0"
   },
   "devDependencies": {

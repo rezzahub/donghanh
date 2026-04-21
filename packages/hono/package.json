@@ -1,6 +1,6 @@
 {
   "name": "@donghanh/hono",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Hono routes for GPT Store and LLM chat — renderers for ChatGPT and OpenAI-compatible APIs",
   "license": "MIT",
   "type": "module",
@@ -13,7 +13,7 @@
     "directory": "packages/hono"
   },
   "peerDependencies": {
-    "@donghanh/core": "^0.2.0",
+    "@donghanh/core": "^0.3.0",
     "hono": "^4.7.0"
   }
 }
