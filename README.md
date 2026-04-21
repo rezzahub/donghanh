@@ -108,6 +108,27 @@ registerOperation(CheckOffer, {
 
 For ChatGPT Actions in particular: point the Action's path at `/public/...` when you want a guest-callable endpoint, and at the default path when you want the auth-required variant. This sidesteps OpenAPI's all-or-nothing per-path security model.
 
+## OpenAPI spec (GPT Actions)
+
+Generate an OpenAPI 3.1 document from your registry — no hand-maintained JSON:
+
+```ts
+import { generateOpenApi } from "@donghanh/hono";
+
+app.get("/openapi.json", (c) =>
+  c.json(
+    generateOpenApi({
+      registry,
+      info: { title: "My API", version: "1.0.0" },
+      servers: [{ url: "https://api.example.com" }],
+      basePath: "/api/gpt",
+    }),
+  ),
+);
+```
+
+Each op gets a concrete path based on its `auth` posture. Upload the JSON (or paste the URL) in the GPT Actions editor.
+
 ## Reference
 
 [Tán Đồng](https://github.com/vuadu/splitbee) — bill-splitting app built with @donghanh. 14 operations, GPT Store integration, in-app chat assistant.

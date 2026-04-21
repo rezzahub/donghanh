@@ -87,7 +87,7 @@ export async function patchConfigWidget(
 
   const inside = match[1];
   const insertion = `\n    ${name}: "${entry}",`;
-  const nextInside = inside.trimEnd() + insertion + "\n  ";
+  const nextInside = `${inside.trimEnd()}${insertion}\n  `;
   const next = src.replace(widgetsRegex, `widgets: {${nextInside}}`);
   await writeFile(configPath, next, "utf8");
   return "patched";

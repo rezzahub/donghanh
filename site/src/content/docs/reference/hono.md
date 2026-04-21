@@ -45,6 +45,40 @@ The compact listing (`GET /operations`) advertises each op's `auth` field so cli
 { id: "my-balance",  type: "query", description: "..." }   // auth omitted = "required"
 ```
 
+### OpenAPI generation
+
+```ts
+import { generateOpenApi } from "@donghanh/hono";
+
+const spec = generateOpenApi({
+  registry,
+  info: { title: "My API", version: "1.0.0" },
+  servers: [{ url: "https://api.example.com" }],
+  basePath: "/api/gpt",
+  // bearerSchemeName: "bearerAuth",   // default
+});
+
+// Serve it from your worker:
+app.get("/openapi.json", (c) => c.json(spec));
+```
+
+Derives one OpenAPI 3.1 `paths` entry per operation from the registry, honoring the same auth rules as `gptRoutes`:
+
+| Op's `auth` | Emitted path(s) |
+|---|---|
+| `"required"` (default) | `${basePath}/query/{op}` (or `/mutate/{op}`) with `security: [{ bearerAuth: [] }]` |
+| `"optional"` | Both the authed default path AND `${basePath}/public/...` with `security: []` |
+| `"none"` | Only `${basePath}/public/...` with `security: []` |
+
+ChatGPT Actions upload this spec. The `/public` entries are callable without an OAuth prompt; the default entries drive the linked-user flow.
+
+**Config:**
+- `registry: Registry`
+- `info: { title, description?, version }`
+- `servers: { url, description? }[]`
+- `basePath?: string` — matches the prefix you mounted `gptRoutes` at, e.g. `"/api/gpt"`
+- `bearerSchemeName?: string` — defaults to `"bearerAuth"`
+
 ## MCP Routes
 
 ```ts
