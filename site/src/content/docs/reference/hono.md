@@ -79,6 +79,8 @@ ChatGPT Actions upload this spec. The `/public` entries are callable without an 
 - `servers: { url, description? }[]`
 - `basePath?: string` — matches the prefix you mounted `gptRoutes` at, e.g. `"/api/gpt"`
 - `bearerSchemeName?: string` — defaults to `"bearerAuth"`
+- `includeDiscoveryEndpoints?: boolean` — default `true`. Emits `GET /operations` (`listOperations`) and `GET /operations/{name}` (`getOperationDetail`) paths so ChatGPT Actions can discover the registry and fetch per-op schemas. Set `false` to omit them.
+- `securityScheme?: object` — full OAS security scheme object placed under `components.securitySchemes[bearerSchemeName]`. Defaults to `{ type: "http", scheme: "bearer" }`. Pass an `oauth2` flow object to match ChatGPT Custom GPT OAuth requirements.
 - `pathStyle?: "parametric" | "per-op"` — default `"parametric"`. Parametric collapses all ops under `/query/{operation}` + `/mutate/{operation}` with an enum on the `operation` path parameter — 2–4 paths total regardless of registry size. `"per-op"` emits one path per operation for richer ChatGPT Action discovery.
 - `includeDescription?: boolean` — default `false`. When off, only `summary` is emitted per path, keeping the spec compact and safely under ChatGPT Actions' 300-char description limit. Opt in when you want longer Action instructions in the OAS. (For listing sibling operations, use `includeOperationsInDetail` on `gptRoutes` instead — the GPT fetches `GET /operations/:name` to learn other available ops.)
 - `maxDescriptionLength?: number` — descriptions longer than this are truncated with an ellipsis. No effect when `includeDescription` is off. Defaults to `300`; summaries are always capped at 120 regardless.

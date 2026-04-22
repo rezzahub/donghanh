@@ -32,7 +32,7 @@ const servers = [{ url: "https://api.example.com" }];
 const basePath = "/api/gpt";
 
 describe("generateOpenApi common", () => {
-  test("emits 3.1.0 spec with info + servers + bearerAuth + empty schemas", () => {
+  test("emits 3.1.0 spec with info + servers + default bearer scheme", () => {
     const spec = generateOpenApi({
       registry: registry({ a: makeOp("a") }),
       info,
@@ -46,7 +46,9 @@ describe("generateOpenApi common", () => {
       type: "http",
       scheme: "bearer",
     });
-    expect(spec.components.schemas).toEqual({});
+    // components.schemas always includes OperationResponse (validator requires object)
+    expect(typeof spec.components.schemas).toBe("object");
+    expect(spec.components.schemas.OperationResponse).toBeDefined();
   });
 
   test("includeDescription is off by default — no description field", () => {
@@ -106,6 +108,86 @@ describe("generateOpenApi common", () => {
     expect(s.length).toBeLessThanOrEqual(120);
   });
 
+  test("emits discovery endpoints by default (listOperations + getOperationDetail)", () => {
+    const spec = generateOpenApi({
+      registry: registry({ a: makeOp("a") }),
+      info,
+      servers,
+      basePath,
+    }) as any;
+    expect(spec.paths["/api/gpt/operations"].get.operationId).toBe(
+      "listOperations",
+    );
+    expect(spec.paths["/api/gpt/operations/{name}"].get.operationId).toBe(
+      "getOperationDetail",
+    );
+    expect(spec.paths["/api/gpt/operations"].get.security).toEqual([]);
+    expect(spec.paths["/api/gpt/operations/{name}"].get.security).toEqual([]);
+  });
+
+  test("includeDiscoveryEndpoints: false omits them", () => {
+    const spec = generateOpenApi({
+      registry: registry({ a: makeOp("a") }),
+      info,
+      servers,
+      basePath,
+      includeDiscoveryEndpoints: false,
+    }) as any;
+    expect(spec.paths["/api/gpt/operations"]).toBeUndefined();
+    expect(spec.paths["/api/gpt/operations/{name}"]).toBeUndefined();
+  });
+
+  test("emits OperationResponse component schema referenced by paths", () => {
+    const spec = generateOpenApi({
+      registry: registry({ a: makeOp("a") }),
+      info,
+      servers,
+      basePath,
+      pathStyle: "per-op",
+    }) as any;
+    expect(spec.components.schemas.OperationResponse.type).toBe("object");
+    expect(
+      spec.components.schemas.OperationResponse.properties.suggestedActions,
+    ).toBeDefined();
+    expect(
+      spec.components.schemas.OperationResponse.properties.nextSteps,
+    ).toBeDefined();
+    expect(
+      spec.paths["/api/gpt/query/a"].get.responses["200"].content[
+        "application/json"
+      ].schema.$ref,
+    ).toBe("#/components/schemas/OperationResponse");
+  });
+
+  test("securityScheme override for oauth2 flow", () => {
+    const spec = generateOpenApi({
+      registry: registry({ a: makeOp("a") }),
+      info,
+      servers,
+      basePath,
+      securityScheme: {
+        type: "oauth2",
+        flows: {
+          authorizationCode: {
+            authorizationUrl: "https://example.com/oauth/authorize",
+            tokenUrl: "https://example.com/oauth/token",
+            scopes: {},
+          },
+        },
+      },
+    }) as any;
+    expect(spec.components.securitySchemes.bearerAuth).toEqual({
+      type: "oauth2",
+      flows: {
+        authorizationCode: {
+          authorizationUrl: "https://example.com/oauth/authorize",
+          tokenUrl: "https://example.com/oauth/token",
+          scopes: {},
+        },
+      },
+    });
+  });
+
   test("custom bearerSchemeName", () => {
     const spec = generateOpenApi({
       registry: registry({ a: makeOp("a") }),
@@ -134,6 +216,7 @@ describe("generateOpenApi pathStyle: 'per-op'", () => {
     const spec = generateOpenApi({
       ...opts,
       registry: registry({ a: makeOp("a", { auth: "required" }) }),
+      includeDiscoveryEndpoints: false,
     }) as any;
     expect(Object.keys(spec.paths)).toEqual(["/api/gpt/query/a"]);
     expect(spec.paths["/api/gpt/query/a"].get.security).toEqual([
@@ -145,6 +228,7 @@ describe("generateOpenApi pathStyle: 'per-op'", () => {
     const spec = generateOpenApi({
       ...opts,
       registry: registry({ a: makeOp("a", { auth: "none" }) }),
+      includeDiscoveryEndpoints: false,
     }) as any;
     expect(Object.keys(spec.paths)).toEqual(["/api/gpt/public/query/a"]);
     expect(spec.paths["/api/gpt/public/query/a"].get.security).toEqual([]);
@@ -154,6 +238,7 @@ describe("generateOpenApi pathStyle: 'per-op'", () => {
     const spec = generateOpenApi({
       ...opts,
       registry: registry({ a: makeOp("a", { auth: "optional" }) }),
+      includeDiscoveryEndpoints: false,
     }) as any;
     const ks = Object.keys(spec.paths).sort();
     expect(ks).toEqual(["/api/gpt/public/query/a", "/api/gpt/query/a"]);
@@ -190,6 +275,7 @@ describe("generateOpenApi pathStyle: 'parametric' (default)", () => {
       info,
       servers,
       basePath,
+      includeDiscoveryEndpoints: false,
     }) as any;
     const ks = Object.keys(spec.paths);
     expect(ks).toEqual(["/api/gpt/query/{operation}"]);
@@ -209,6 +295,7 @@ describe("generateOpenApi pathStyle: 'parametric' (default)", () => {
       info,
       servers,
       basePath,
+      includeDiscoveryEndpoints: false,
     }) as any;
     const ks = Object.keys(spec.paths).sort();
     expect(ks).toEqual([

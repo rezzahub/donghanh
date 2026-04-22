@@ -17,8 +17,32 @@ export interface GenerateOpenApiConfig {
   servers: OpenApiServer[];
   /** Mount path prefix, e.g. "/api/gpt". Omit trailing slash. Defaults to "". */
   basePath?: string;
-  /** Name of the bearer security scheme. Defaults to "bearerAuth". */
+  /** Name of the security scheme entry under components.securitySchemes. Defaults to "bearerAuth". */
   bearerSchemeName?: string;
+  /**
+   * Full security scheme object to place under components.securitySchemes.
+   * Defaults to `{ type: "http", scheme: "bearer" }`. Pass an oauth2 flow
+   * object to match ChatGPT Custom GPT OAuth requirements:
+   *
+   *   securityScheme: {
+   *     type: "oauth2",
+   *     flows: {
+   *       authorizationCode: {
+   *         authorizationUrl: "https://example.com/oauth/authorize",
+   *         tokenUrl:         "https://example.com/oauth/token",
+   *         scopes: {},
+   *       },
+   *     },
+   *   }
+   */
+  securityScheme?: Record<string, unknown>;
+  /**
+   * Include the discovery endpoints (`GET /operations` and
+   * `GET /operations/{name}`) in the generated spec. Default true — the
+   * GPT relies on these to learn available operations and their input
+   * schemas before invoking one.
+   */
+  includeDiscoveryEndpoints?: boolean;
   /** When true, adds an info note about the $variables encoding (default true). */
   describeVariables?: boolean;
   /**
@@ -86,6 +110,8 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
     servers,
     basePath = "",
     bearerSchemeName = "bearerAuth",
+    securityScheme = { type: "http", scheme: "bearer" },
+    includeDiscoveryEndpoints = true,
     describeVariables = true,
     includeDescription = false,
     maxDescriptionLength = 300,
@@ -129,21 +155,7 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
       description: "Successful response.",
       content: {
         "application/json": {
-          schema: {
-            type: "object",
-            properties: {
-              data: { type: "object" },
-              suggestedActions: {
-                type: "array",
-                items: { type: "object" },
-              },
-              nextSteps: { type: "string" },
-              operations: {
-                type: "array",
-                items: { type: "object" },
-              },
-            },
-          },
+          schema: { $ref: "#/components/schemas/OperationResponse" },
         },
       },
     },
@@ -151,19 +163,7 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
       description: "Validation or execution error.",
       content: {
         "application/json": {
-          schema: {
-            type: "object",
-            properties: {
-              errors: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: { message: { type: "string" } },
-                },
-              },
-              operationDetail: { type: "object" },
-            },
-          },
+          schema: { $ref: "#/components/schemas/OperationResponse" },
         },
       },
     },
@@ -243,21 +243,224 @@ export function generateOpenApi(config: GenerateOpenApiConfig): object {
     }
   }
 
+  if (includeDiscoveryEndpoints) {
+    emitDiscoveryEndpoints(paths, basePath, noSec, successResponse);
+  }
+
   return {
     openapi: "3.1.0",
     info,
     servers,
     paths,
     components: {
-      schemas: {},
+      schemas: {
+        OperationResponse: operationResponseSchema,
+      },
       securitySchemes: {
-        [bearerSchemeName]: {
-          type: "http",
-          scheme: "bearer",
-        },
+        [bearerSchemeName]: securityScheme,
       },
     },
   };
+}
+
+const operationResponseSchema = {
+  type: "object",
+  properties: {
+    data: { type: "object", description: "Operation result data" },
+    errors: {
+      type: "array",
+      description: "Included on error responses.",
+      items: {
+        type: "object",
+        properties: { message: { type: "string" } },
+      },
+    },
+    operations: {
+      type: "array",
+      description:
+        "All available operations (always present in every response).",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          type: { type: "string", enum: ["query", "mutation"] },
+          description: { type: "string" },
+          auth: { type: "string", enum: ["none", "optional", "required"] },
+        },
+      },
+    },
+    suggestedActions: {
+      type: "array",
+      description:
+        "Context-aware suggested next operations with pre-filled variables.",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          type: { type: "string", enum: ["query", "mutation"] },
+          description: { type: "string" },
+          variables: { type: "object" },
+          $variables: {
+            type: "string",
+            description: "Variables pre-encoded as a string, ready to reuse.",
+          },
+          input: {
+            type: "object",
+            description: "JSON Schema for this operation's variables",
+          },
+        },
+      },
+    },
+    display: {
+      type: "string",
+      description:
+        "Pre-rendered text in the user's locale. Suggested wording — adapt tone freely but keep amounts and names accurate.",
+    },
+    nextSteps: {
+      type: "string",
+      description:
+        "Contextual instructions for the assistant. Follow these exactly.",
+    },
+    operationDetail: {
+      type: "object",
+      description:
+        "Included on error responses. Contains the operation's input schema and instruction so you can fix your request and retry.",
+      properties: {
+        instruction: { type: "string" },
+        input: { type: "object" },
+      },
+    },
+    responseSchema: {
+      type: "object",
+      description:
+        "JSON Schema for the response data. Included on the start response when configured.",
+    },
+  },
+};
+
+function emitDiscoveryEndpoints(
+  paths: Record<string, PathItem>,
+  basePath: string,
+  noSec: Sec,
+  successResponse: Record<string, unknown>,
+): void {
+  paths[`${basePath}/operations`] = {
+    get: {
+      operationId: "listOperations",
+      summary: "Discover available operations",
+      security: noSec,
+      parameters: [
+        {
+          name: "search",
+          in: "query",
+          required: false,
+          description: "Filter operations by keyword in id or description.",
+          schema: { type: "string" },
+        },
+        {
+          name: "type",
+          in: "query",
+          required: false,
+          description: "Filter by operation type.",
+          schema: { type: "string", enum: ["query", "mutation"] },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "List of available operations",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  operations: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        type: {
+                          type: "string",
+                          enum: ["query", "mutation"],
+                        },
+                        description: { type: "string" },
+                        auth: {
+                          type: "string",
+                          enum: ["none", "optional", "required"],
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    } as Operation,
+  };
+
+  paths[`${basePath}/operations/{name}`] = {
+    get: {
+      operationId: "getOperationDetail",
+      summary: "Get full details for a specific operation",
+      security: noSec,
+      parameters: [
+        {
+          name: "name",
+          in: "path",
+          required: true,
+          description: "Operation slug.",
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Operation detail",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  type: { type: "string", enum: ["query", "mutation"] },
+                  description: { type: "string" },
+                  instruction: { type: "string" },
+                  input: { type: "object" },
+                  response: { type: "object" },
+                  auth: {
+                    type: "string",
+                    enum: ["none", "optional", "required"],
+                  },
+                  operations: {
+                    type: "array",
+                    description:
+                      "Present when includeOperationsInDetail is enabled on gptRoutes.",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        type: { type: "string", enum: ["query", "mutation"] },
+                        description: { type: "string" },
+                        auth: {
+                          type: "string",
+                          enum: ["none", "optional", "required"],
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        "404": {
+          description: "Unknown operation",
+        },
+      },
+    } as Operation,
+  };
+  void successResponse;
 }
 
 function emitParametric(
