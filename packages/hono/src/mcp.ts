@@ -37,6 +37,17 @@ export interface McpRoutesConfig {
   encodeVariables?: (vars: Record<string, unknown>) => string;
   /** Named widgets. Operation's `widget` config key must match a name here. */
   widgets?: Record<string, WidgetConfig>;
+  /** Hook to enrich `structuredContent` after execution (e.g. inject display text) */
+  enrichResponse?: (
+    structured: Record<string, unknown>,
+    opts: {
+      operationId: string;
+      data: unknown;
+      variables: Record<string, unknown>;
+      userId: string | null;
+      request: Request;
+    },
+  ) => Promise<void>;
 }
 
 type JsonRpcRequest = {
@@ -136,6 +147,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     serverInfo = { name: "donghanh-mcp", version: "0.1.0" },
     encodeVariables,
     widgets = {},
+    enrichResponse,
   } = config;
 
   const app = new Hono();
@@ -150,6 +162,12 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
         resource_documentation: resourceDocumentation,
       }),
     }),
+  );
+
+  // Stateless server: no SSE stream to open
+  app.get(
+    "/mcp",
+    () => new Response(null, { status: 405, headers: { Allow: "POST" } }),
   );
 
   app.post("/mcp", async (c) => {
@@ -290,11 +308,12 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
           }
         }
 
+        const variables = params.arguments ?? {};
         try {
           const { data, brief } = await executeOperation({
             registry,
             operationId: toolName,
-            variables: params.arguments ?? {},
+            variables,
             executor,
             context: { userId, request: c.req.raw },
           });
@@ -312,6 +331,16 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
           }
           if (rendered.display !== undefined) {
             structured.display = rendered.display;
+          }
+
+          if (enrichResponse) {
+            await enrichResponse(structured, {
+              operationId: toolName,
+              data,
+              variables,
+              userId,
+              request: c.req.raw,
+            });
           }
 
           const meta: Record<string, unknown> = {};

@@ -259,6 +259,40 @@ describe("mcpRoutes", () => {
     expect(result.structuredContent.display).toEqual({ x: 1 });
   });
 
+  test("tools/call: enrichResponse can add fields to structuredContent", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({ q: makeOp("q") }),
+      executor: async () => ({ v: 1 }),
+      enrichResponse: async (structured, opts) => {
+        structured.display = `${opts.operationId}:${opts.userId}`;
+      },
+    });
+    const { result } = await rpc(app, "tools/call", { name: "q" });
+    expect(result.structuredContent.display).toBe("q:u1");
+    expect(result.structuredContent.q).toEqual({ v: 1 });
+  });
+
+  test("tools/call: enrichResponse receives the call arguments", async () => {
+    let seen: Record<string, unknown> | undefined;
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({ q: makeOp("q") }),
+      enrichResponse: async (_structured, opts) => {
+        seen = opts.variables;
+      },
+    });
+    await rpc(app, "tools/call", { name: "q", arguments: { groupId: "g1" } });
+    expect(seen?.groupId).toBe("g1");
+  });
+
+  test("GET /mcp → 405 with Allow: POST", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    const res = await app.request("/mcp");
+    expect(res.status).toBe(405);
+    expect(res.headers.get("allow")).toBe("POST");
+  });
+
   test("unknown tool → error", async () => {
     const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
     const { error } = await rpc(app, "tools/call", { name: "nope" });

@@ -130,6 +130,7 @@ donghanh build               widgets → manifest → server bundle
 - [x] Add `resources/list` handler
 - [x] Add `resources/read` handler
 - [x] `widgets` map on `mcpRoutes` (`Record<name, { uri, html, domain?, csp? }>`)
+- [x] `enrichResponse(structured, { operationId, data, variables, userId, request })` hook on `mcpRoutes` to inject app-specific fields into `structuredContent`; `GET /mcp` → 405 `Allow: POST`
 - [x] Attach `_meta.ui.resourceUri` + `openai/outputTemplate` on tools
 - [x] `ExecutorContext.userId` → `string | null` (or sentinel for anon)
 - [x] Bump protocol version to `2026-01-26` (verify vs auth spec)
