@@ -201,7 +201,10 @@ export function catalogTools(
       title,
       description,
       inputSchema,
-      annotations: annotations as McpTool["annotations"],
+      annotations: {
+        ...(annotations as object),
+        openWorldHint: subset.some((d) => d.external),
+      } as McpTool["annotations"],
       securitySchemes: unionSchemes(subset, defaultScopes),
     });
   }

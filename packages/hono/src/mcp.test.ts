@@ -701,3 +701,23 @@ describe("mcpRoutes exposure", () => {
     ).toThrow(/nope/);
   });
 });
+
+describe("invalid method", () => {
+  test("a non-string method is Invalid Request, not a 500", async () => {
+    const app = mcpRoutes({
+      resource: "https://app.example.com",
+      authorizationServers: ["https://auth.example.com"],
+      scopes: ["read"],
+      authenticate: async () => ({ userId: "u1" }) as any,
+      registry: buildRegistry(App({ operations: {} })),
+      executor: (async () => ({})) as any,
+    });
+    const res = await app.request("/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: 123 }),
+    });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as any).error.code).toBe(-32600);
+  });
+});

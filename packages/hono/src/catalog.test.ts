@@ -357,3 +357,169 @@ describe("catalog meta-tools", () => {
     expect(b.result.tools.map((t: any) => t.name)).toContain("find_operations");
   });
 });
+
+describe("catalog meta-tools: final review fixes", () => {
+  const anon = { authenticate: async () => ({ error: "no" }) };
+
+  test("run_* reject a non-object variables and do not call the executor", async () => {
+    let calls = 0;
+    const app = catalogApp(
+      {
+        q: makeOp("q"),
+        m: makeOp("m", { type: "mutation" }),
+        d: makeOp("d", { type: "mutation", destructive: true }),
+      },
+      {
+        executor: (async () => {
+          calls++;
+          return {};
+        }) as Executor,
+      },
+    );
+    const cases: [string, string][] = [
+      ["run_read", "q"],
+      ["run_write", "m"],
+      ["run_destructive", "d"],
+    ];
+    for (const [tool, id] of cases) {
+      for (const variables of ['{"a":1}', [1]]) {
+        const r = (await call(app, tool, { id, variables, intent: "x" }))
+          .result;
+        expect(r.isError).toBe(true);
+        expect(r.content[0].text).toBe("variables must be an object.");
+      }
+    }
+    expect(calls).toBe(0);
+    for (const [tool, id] of cases) {
+      for (const variables of [undefined, null]) {
+        const r = (await call(app, tool, { id, variables, intent: "x" }))
+          .result;
+        expect(r.isError).toBeUndefined();
+      }
+    }
+    expect(calls).toBe(6);
+  });
+
+  test("run_write/run_destructive openWorldHint follows reachable external operations", async () => {
+    const hints = async (ops: Record<string, OperationComponent>) => {
+      const tools = (await rpc(catalogApp(ops), "tools/list")).result
+        .tools as any[];
+      const by = (n: string) => tools.find((t) => t.name === n);
+      return [
+        by("run_write")?.annotations.openWorldHint,
+        by("run_destructive")?.annotations.openWorldHint,
+      ];
+    };
+    expect(
+      await hints({
+        m: makeOp("m", { type: "mutation" }),
+        d: makeOp("d", { type: "mutation", destructive: true }),
+      }),
+    ).toEqual([false, false]);
+    expect(
+      await hints({
+        m: makeOp("m", { type: "mutation", external: true }),
+        d: makeOp("d", { type: "mutation", destructive: true }),
+      }),
+    ).toEqual([true, false]);
+    expect(
+      await hints({
+        m: makeOp("m", { type: "mutation" }),
+        d: makeOp("d", {
+          type: "mutation",
+          destructive: true,
+          external: true,
+        }),
+      }),
+    ).toEqual([false, true]);
+  });
+
+  test("get_operation hides required siblings from anonymous callers", async () => {
+    const app = catalogApp(
+      {
+        open: makeOp("open", { auth: "none" }),
+        req: makeOp("req", { auth: "required" }),
+      },
+      anon,
+    );
+    const { result } = await call(app, "get_operation", { id: "open" });
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent.operations.map((o: any) => o.id)).toEqual([
+      "open",
+    ]);
+  });
+
+  test("get_operation on a required operation challenges an anonymous caller", async () => {
+    const app = catalogApp({ req: makeOp("req", { auth: "required" }) }, anon);
+    const { result } = await call(app, "get_operation", { id: "req" });
+    expect(result.isError).toBe(true);
+    expect(result._meta["mcp/www_authenticate"]).toHaveLength(1);
+  });
+
+  test("find_operations challenges when hiding removed every operation", async () => {
+    const app = catalogApp({ req: makeOp("req", { auth: "required" }) }, anon);
+    const { result } = await call(app, "find_operations", {});
+    expect(result.isError).toBe(true);
+    expect(result._meta["mcp/www_authenticate"]).toHaveLength(1);
+    const mixed = catalogApp(
+      {
+        req: makeOp("req", { auth: "required" }),
+        open: makeOp("open", { auth: "none" }),
+      },
+      anon,
+    );
+    const ok = (await call(mixed, "find_operations", {})).result;
+    expect(ok.isError).toBeUndefined();
+    expect(ok.structuredContent.operations.map((o: any) => o.id)).toEqual([
+      "open",
+    ]);
+  });
+
+  test("find_operations matches any whitespace-separated token", async () => {
+    const app = catalogApp({
+      del: makeOp("del", {
+        title: "Delete a candidate",
+        description: "Delete a candidate from project",
+      }),
+      other: makeOp("other"),
+    });
+    const find = async (query: string) =>
+      (
+        (await call(app, "find_operations", { query })).result
+          .structuredContent.operations as any[]
+      ).map((o) => o.id);
+    expect(await find("delete candidate")).toEqual(["del"]);
+    expect(await find("  CANDIDATE   zzz ")).toEqual(["del"]);
+    expect(await find("zzz qqq")).toEqual([]);
+  });
+
+  test("an appCallable catalog mutation is callable by name and listed app-only", async () => {
+    const app = catalogApp({
+      m: makeOp("m", { type: "mutation", appCallable: true }),
+      q: makeOp("q"),
+    });
+    const tools = (await rpc(app, "tools/list")).result.tools as any[];
+    expect(tools.find((t) => t.name === "m")._meta.ui.visibility).toEqual([
+      "app",
+    ]);
+    const r = (await call(app, "m", {})).result;
+    expect(r.isError).toBeUndefined();
+  });
+
+  test("run_* on an optional-auth operation runs anonymously with userId null", async () => {
+    const users: unknown[] = [];
+    const app = catalogApp(
+      { q: makeOp("q", { auth: "optional" }) },
+      {
+        ...anon,
+        executor: (async (_o: string, _v: any, ctx: any) => {
+          users.push(ctx.userId);
+          return {};
+        }) as Executor,
+      },
+    );
+    const r = (await call(app, "run_read", { id: "q", variables: {} })).result;
+    expect(r.isError).toBeUndefined();
+    expect(users).toEqual([null]);
+  });
+});

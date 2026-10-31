@@ -345,23 +345,30 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     if (name === "find_operations") {
       const authResult = await authenticate(request);
       const anonymous = "error" in authResult;
-      const q =
-        typeof args.query === "string" ? args.query.trim().toLowerCase() : "";
+      const tokens =
+        typeof args.query === "string"
+          ? args.query.toLowerCase().split(/\s+/).filter(Boolean)
+          : [];
       const tags = Array.isArray(args.tags)
         ? args.tags.map((t) => String(t).toLowerCase())
         : [];
-      const operations = registry
-        .list()
-        .filter((o) => catalogIdSet.has(o.id))
-        .filter((o) => !anonymous || (o.auth ?? "required") !== "required")
+      const catalog = registry.list().filter((o) => catalogIdSet.has(o.id));
+      const visible = catalog.filter(
+        (o) => !anonymous || (o.auth ?? "required") !== "required",
+      );
+      if (anonymous && catalog.length > 0 && visible.length === 0) {
+        return authFailure();
+      }
+      const operations = visible
         .filter((o) => {
           const own = (o.tags ?? []).map((t) => t.toLowerCase());
           if (tags.length > 0 && !tags.some((t) => own.includes(t)))
             return false;
-          if (!q) return true;
-          return [o.id, o.title ?? "", o.description, ...own].some((f) =>
-            f.toLowerCase().includes(q),
+          if (tokens.length === 0) return true;
+          const fields = [o.id, o.title ?? "", o.description, ...own].map(
+            (f) => f.toLowerCase(),
           );
+          return tokens.some((tok) => fields.some((f) => f.includes(tok)));
         })
         .map((o) => ({
           id: o.id,
@@ -384,7 +391,15 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     const { detail } = target;
 
     if (name === "get_operation") {
-      const operations = registry.list().filter((o) => catalogIdSet.has(o.id));
+      const authResult = await authenticate(request);
+      const anonymous = "error" in authResult;
+      if (anonymous && (detail.auth ?? "required") === "required") {
+        return authFailure();
+      }
+      const operations = registry
+        .list()
+        .filter((o) => catalogIdSet.has(o.id))
+        .filter((o) => !anonymous || (o.auth ?? "required") !== "required");
       return { body: metaResult({ ...detail, operations }) };
     }
 
@@ -407,10 +422,14 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
         };
       }
     }
-    const variables =
-      args.variables && typeof args.variables === "object"
-        ? (args.variables as Record<string, unknown>)
-        : {};
+    const raw = args.variables;
+    if (
+      raw != null &&
+      (typeof raw !== "object" || Array.isArray(raw))
+    ) {
+      return { body: errorResult("variables must be an object.") };
+    }
+    const variables = (raw ?? {}) as Record<string, unknown>;
     return runOperation(request, detail.id, variables, intent);
   }
 
@@ -461,7 +480,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     const id = body.id ?? null;
     const method = body.method;
 
-    if (body.jsonrpc !== "2.0" || !method) {
+    if (body.jsonrpc !== "2.0" || typeof method !== "string" || !method) {
       return c.json(failure(id, -32600, "Invalid Request"), 400);
     }
 
