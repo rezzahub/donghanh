@@ -15,7 +15,7 @@
     "url": "https://github.com/rezzahub/donghanh",
     "directory": "packages/cli"
   },
-  "devDependencies": {
-    "@donghanh/config": "workspace:*"
+  "dependencies": {
+    "@donghanh/config": "workspace:^"
   }
 }

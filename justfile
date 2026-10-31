@@ -96,8 +96,14 @@ publish target otp:
     #!/usr/bin/env bash
     set -euo pipefail
     publish_pkg() {
-      echo "Publishing $1..."
-      cd "$1" && pnpm publish --access public --no-git-checks --otp={{otp}} && cd - > /dev/null || true
+      local spec
+      spec="$(node -p "const p=require('./$1/package.json'); p.name + '@' + p.version")"
+      if [ -n "$(npm view "$spec" version 2>/dev/null)" ]; then
+        echo "Skipping $spec: already published"
+        return
+      fi
+      echo "Publishing $spec..."
+      (cd "$1" && pnpm publish --access public --no-git-checks --otp={{otp}})
     }
     if [ "{{target}}" = "all" ]; then
       publish_pkg packages/core

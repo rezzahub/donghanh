@@ -16,7 +16,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # The docs site isn't linted or tested here.
+      - run: pnpm install --frozen-lockfile --filter '!./site'
       - run: pnpm run lint
       - run: pnpm test
 
