@@ -121,7 +121,7 @@ Resolution per operation: widget operations → tool; `pin` → tool; matches `t
 | `find_operations` | read-only | `{ query?, tags? }` | compact list `{ id, title, description, type, destructive, tags }` of catalog operations visible to the caller, keyword-matched on id, title, description and tags; the first result page also carries a one-line reminder to call `get_operation` before running |
 | `get_operation` | read-only | `{ id }` | the operation detail: input schema, instruction, response schema, siblings (reuses `gptRoutes` detail building) |
 | `run_read` | read-only | `{ id, variables }` | runs a catalog **query** |
-| `run_write` | write, not destructive, closed-world | `{ id, variables, intent }` | runs a catalog non-destructive **mutation** |
+| `run_write` | write, not destructive, closed-world unless a reachable operation is `external` | `{ id, variables, intent }` | runs a catalog non-destructive **mutation** |
 | `run_destructive` | write, destructive | `{ id, variables, intent }` | runs a catalog destructive **mutation** |
 
 - Each executor refuses an operation of another class (`run_read` on a mutation, `run_write` on a destructive one) with an actionable error naming the right tool.
