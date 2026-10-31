@@ -22,6 +22,16 @@ export interface OperationConfig {
   external?: boolean;
   /** Widget name (matches a key in mcpRoutes `widgets` map). Omit for data-only ops. */
   widget?: string;
+  /** Human-readable title for tool listings. */
+  title?: string;
+  /** True if repeating the call with the same input has no further effect. */
+  idempotent?: boolean;
+  /** Free-form grouping tags. */
+  tags?: string[];
+  /** Extra protocol metadata passed through to tool listings. */
+  meta?: Record<string, unknown>;
+  /** True if the app UI may call this op directly. */
+  appCallable?: boolean;
 }
 
 export interface OperationComponent<T = any> {
@@ -48,4 +58,6 @@ export interface ExecutorContext {
   /** Authenticated user id, or null for anonymous tools (OperationConfig.auth === "none"). */
   userId: string | null;
   request: Request;
+  /** Caller-stated reason for the call, when provided. */
+  intent?: string;
 }
