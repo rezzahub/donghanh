@@ -325,3 +325,32 @@ describe("gptRoutes /public sub-paths", () => {
     expect(capture.userId).toBe("anonymous");
   });
 });
+
+describe("gptRoutes GET /operations instructions", () => {
+  const base = {
+    executor: (async () => ({})) as Executor,
+    authenticate: async () => ({ userId: "x" }),
+  };
+
+  test("includes app instructions when present", async () => {
+    const app = gptRoutes({
+      ...base,
+      registry: buildRegistry(
+        App({ operations: { a: makeOp("a") }, instructions: "Play." }),
+      ),
+    });
+    expect(await (await app.request("/operations")).json()).toMatchObject({
+      instructions: "Play.",
+      operations: expect.any(Array),
+    });
+  });
+
+  test("omits instructions when the app has none", async () => {
+    const app = gptRoutes({ ...base, registry: makeApp({ a: makeOp("a") }) });
+    const body = (await (await app.request("/operations")).json()) as Record<
+      string,
+      unknown
+    >;
+    expect("instructions" in body).toBe(false);
+  });
+});

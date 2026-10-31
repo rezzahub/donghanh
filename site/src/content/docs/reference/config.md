@@ -60,3 +60,7 @@ Returns `{ config, path, root }` or `null` if no config found. Requires a runtim
 | `server.widgetDomain` | `string` | Apps SDK sandbox domain |
 | `server.csp` | `{ connectDomains, resourceDomains, frameDomains }` | Widget CSP |
 | `server.apiKey` / `model` / `systemPrompt` | chat config | For `chatRoutes` |
+
+## Deprecation
+
+The `server` block is deprecated and will be removed in 0.5. Pass `resource`, `authorizationServers`, `scopes` and the rest to `mcpRoutes` and `chatRoutes`, and set `App({ instructions })` instead of `server.systemPrompt`.

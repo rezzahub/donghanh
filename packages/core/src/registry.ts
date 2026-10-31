@@ -6,6 +6,9 @@ export interface CompactOperation {
   type: "query" | "mutation";
   description: string;
   auth?: "none" | "optional" | "required";
+  title?: string;
+  tags?: string[];
+  destructive?: boolean;
 }
 
 export interface OperationDetail {
@@ -20,9 +23,15 @@ export interface OperationDetail {
   destructive?: boolean;
   external?: boolean;
   widget?: string;
+  title?: string;
+  idempotent?: boolean;
+  tags?: string[];
+  meta?: Record<string, unknown>;
+  appCallable?: boolean;
 }
 
 export interface Registry {
+  instructions(): string | undefined;
   list(): CompactOperation[];
   detail(name: string): OperationDetail | null;
   get(name: string): OperationComponent | undefined;
@@ -36,10 +45,17 @@ export function buildRegistry(
 
   for (const ref of appNode.operations) {
     const op = ref.component as OperationComponent;
-    map.set(op.operationConfig.id, op);
+    const id = op.operationConfig.id;
+    if (map.get(id) === op) continue;
+    if (map.has(id)) throw new Error(`Duplicate operation id "${id}"`);
+    map.set(id, op);
   }
 
   return {
+    instructions(): string | undefined {
+      return appNode.instructions;
+    },
+
     list(): CompactOperation[] {
       return Array.from(map.values()).map((op) => {
         const entry: CompactOperation = {
@@ -47,7 +63,11 @@ export function buildRegistry(
           type: op.operationConfig.type,
           description: op.operationConfig.description,
         };
-        if (op.operationConfig.auth) entry.auth = op.operationConfig.auth;
+        const c = op.operationConfig;
+        if (c.auth) entry.auth = c.auth;
+        if (c.title !== undefined) entry.title = c.title;
+        if (c.tags !== undefined) entry.tags = c.tags;
+        if (c.destructive !== undefined) entry.destructive = c.destructive;
         return entry;
       });
     },
@@ -68,6 +88,11 @@ export function buildRegistry(
         destructive: config.destructive,
         external: config.external,
         widget: config.widget,
+        title: config.title,
+        idempotent: config.idempotent,
+        tags: config.tags,
+        meta: config.meta,
+        appCallable: config.appCallable,
       };
     },
 

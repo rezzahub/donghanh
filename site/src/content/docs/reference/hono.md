@@ -182,3 +182,74 @@ type Authenticate = (request: Request) => Promise<{ userId: string } | { error: 
 ```
 
 `ExecutorContext.userId` is `string | null` — null when the operation's `auth` is `"none"` or `"optional"` and no token was presented. Guard accordingly in executors.
+
+## MCP exposure, instructions and protocol (0.4)
+
+### More `mcpRoutes` options
+
+- `path?: string` — JSON-RPC endpoint path. Default `"/mcp"`.
+- `metadata?: boolean` — mount `/.well-known/oauth-protected-resource`. Default `true`. Set `false` when several endpoints share one origin and you serve the metadata once.
+- `instructionsSuffix?: string` — appended to `App.instructions` in `initialize.instructions` (only when the app has instructions; dropped when it has none). Use it to differ per endpoint.
+- `actionsInText?: boolean` — append the result's next-step actions to the tool text as a `Next:` list (`- label (operation id)`). Default `true`. `structuredContent.actions` is unaffected.
+  Action variables go inside the parentheses as compact JSON (`- label (id {"a":1})`). An operation only the catalog can run is written as the call to make: `- label (run_read id="<id>" variables={"a":1})`, with `run_write` or `run_destructive` by class.
+- `outputSchema?: (op, wrapped) => object | undefined` — final say on each tool's `outputSchema`. `wrapped` is the default schema (undefined when the operation has no response schema); the return value is used as is, and `undefined` omits it.
+- `exposure?: ExposureConfig` — which operations are tools and which only the catalog (below). Default: every operation is a tool.
+
+`serverInfo` defaults to `{ name: "donghanh-mcp", version: "0.1.0" }`; set it to your own.
+
+### App instructions
+
+When the app sets `App({ instructions })`, `initialize` returns it as `instructions` (plus `instructionsSuffix`). `mcpRoutes` warns once at startup above 4,096 characters. `gptRoutes` returns `instructions` from `GET /operations`. `chatRoutes` uses it as the system prompt unless you pass `systemPrompt`; an explicit `systemPrompt` wins.
+
+### Exposure and the catalog
+
+By default every operation is a tool. With many operations, put most of them in a catalog behind a few meta-tools so the tool list stays short.
+
+```ts
+mcpRoutes({
+  // ...
+  exposure: { default: "tool", catalog: { type: "query" }, pin: ["start"] },
+});
+```
+
+`ExposureConfig`:
+- `default?: "tool" | "catalog"` — placement when nothing else matches. Default `"tool"`.
+- `tools?: Selector` — operations that are tools.
+- `catalog?: Selector` — operations that go in the catalog.
+- `pin?: string[]` — operation ids that are always tools.
+
+`Selector` fields: `type` (`"query"` or `"mutation"`), `tags`, `ids`, `widget` (boolean), `destructive` (boolean). A selector with several fields matches an operation only when all of them match; `tags` matches when any tag matches.
+
+Order of precedence: operations with a `widget` are always tools, then `pin`, then `tools`, then `catalog`, then `default`. An id in `pin`, `tools.ids` or `catalog.ids` that is not an operation throws at startup.
+
+Meta-tools are generated only when the catalog has operations of that kind:
+
+| Tool | Purpose |
+|---|---|
+| `find_operations` | Search catalog operations by id, title, description or tag (`query`, `tags`) |
+| `get_operation` | Input schema, instruction and response schema of one operation |
+| `run_read` | Run a catalog query |
+| `run_write` | Run a catalog mutation; needs `intent`, a sentence shown in approval dialogs |
+| `run_destructive` | Run a destructive catalog mutation; needs `intent` |
+
+An operation id equal to a meta-tool name throws at startup. Calling a catalog mutation directly as a tool is rejected with a pointer to `run_write` or `run_destructive`. Catalog operations with `appCallable` stay callable by the widget and are listed with visibility `["app"]`. See the guide "Many operations: hybrid exposure".
+
+### Protocol behavior
+
+Three behaviors changed in 0.4:
+
+- **Protocol negotiation.** `initialize` answers the client's `protocolVersion` when it is supported, otherwise the newest. `SUPPORTED_PROTOCOL_VERSIONS` is `2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05`. Before 0.4 it always answered `2026-01-26`.
+- **200 for JSON-RPC errors.** Unknown methods, tools and resources, and catalog mutations, now answer HTTP 200 with a JSON-RPC `error` body (`-32601`), not 404. Malformed requests (parse error, invalid request, missing `uri` or tool name) still answer 400.
+- **202 for notifications.** Every `notifications/*` method answers 202 with no body, not only `initialized` and `cancelled`.
+
+JSON-RPC batches (a JSON array body) are rejected with `-32600`, including on `2025-03-26`; a body that is not a JSON object answers `-32600` with HTTP 400.
+
+`ping`, `resources/templates/list` and `prompts/list` are answered, so strict clients can finish tool discovery.
+
+## Upgrading to 0.4
+
+- The `Next:` block of suggested actions is now in the tool text by default. Pass `actionsInText: false` to opt out.
+- Distinct operations that share an id now throw at startup. The same component registered under two keys is still accepted.
+- `Registry` gained a required `instructions()` method. Add it to hand-built registries (it may return `undefined`).
+- JSON-RPC errors for unknown methods, tools and resources answer HTTP 200 (`-32601`), not 404.
+- Notifications answer 202 with no body, not 204.
