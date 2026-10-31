@@ -1,5 +1,12 @@
 export type { ChatMessage, ChatRoutesConfig } from "./chat";
 export { chatRoutes } from "./chat";
+export type {
+  ExposureConfig,
+  Placement,
+  ResolvedExposure,
+  Selector,
+} from "./exposure";
+export { resolveExposure } from "./exposure";
 export type { GptRoutesConfig } from "./gpt";
 export { gptRoutes } from "./gpt";
 export type { McpRoutesConfig, WidgetConfig } from "./mcp";

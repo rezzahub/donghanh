@@ -1,6 +1,8 @@
 import type { Executor, OperationDetail, Registry } from "@donghanh/core";
 import { executeOperation } from "@donghanh/core";
 import { Hono } from "hono";
+import type { ExposureConfig } from "./exposure";
+import { resolveExposure } from "./exposure";
 import type { Authenticate } from "./middleware";
 import { negotiateProtocolVersion } from "./protocol";
 import type { ChatGptResult } from "./renderers/chatgpt";
@@ -48,6 +50,8 @@ export interface McpRoutesConfig {
    * (default true). `structuredContent.actions` is unaffected.
    */
   actionsInText?: boolean;
+  /** Which operations are tools, and which only the catalog (default: all tools). */
+  exposure?: ExposureConfig;
   /** Named widgets. Operation's `widget` config key must match a name here. */
   widgets?: Record<string, WidgetConfig>;
   /**
@@ -196,7 +200,10 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     widgets = {},
     enrichResponse,
     outputSchema,
+    exposure,
   } = config;
+
+  const resolved = resolveExposure(registry, exposure);
 
   const appInstructions = registry.instructions();
   const instructions =
@@ -279,7 +286,14 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
         return c.json(success(id, { prompts: [] }));
 
       case "tools/list": {
-        const tools = registry.list().map((op) => {
+        const listed = registry
+          .list()
+          .filter(
+            (op) =>
+              resolved.placement.get(op.id) !== "catalog" ||
+              resolved.appOnly.has(op.id),
+          );
+        const tools = listed.map((op) => {
           const detail = registry.detail(op.id);
           const widgetName = detail?.widget;
           const widget = widgetName ? widgets[widgetName] : undefined;
@@ -323,6 +337,11 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
           if (widget) {
             meta.ui = { resourceUri: widget.uri };
             meta["openai/outputTemplate"] = widget.uri;
+          }
+          if (resolved.pinned.has(op.id)) meta["anthropic/alwaysLoad"] = true;
+          if (resolved.placement.get(op.id) === "catalog") {
+            const ui = (meta.ui ?? {}) as Record<string, unknown>;
+            meta.ui = { ...ui, visibility: ["app"] };
           }
           if (Object.keys(meta).length > 0) tool._meta = meta;
 
@@ -377,6 +396,20 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
         }
 
         const detail = registry.detail(toolName);
+        if (
+          resolved.placement.get(toolName) === "catalog" &&
+          !resolved.appOnly.has(toolName) &&
+          op.operationConfig.type === "mutation"
+        ) {
+          const runner = detail?.destructive ? "run_destructive" : "run_write";
+          return c.json(
+            failure(
+              id,
+              -32601,
+              `Operation "${toolName}" is not a tool on this endpoint; call it with ${runner}`,
+            ),
+          );
+        }
         const authMode = detail?.auth ?? "required";
 
         let userId: string | null = null;

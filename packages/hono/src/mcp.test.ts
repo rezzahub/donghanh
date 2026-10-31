@@ -617,3 +617,87 @@ describe("mcpRoutes", () => {
     });
   });
 });
+
+describe("mcpRoutes exposure", () => {
+  const ops = () =>
+    makeApp({
+      p: makeOp("p"),
+      q: makeOp("q"),
+      a: makeOp("a", { appCallable: true, meta: { ui: { x: 1 } } }),
+      m2: makeOp("m2", { type: "mutation" }),
+      d2: makeOp("d2", { type: "mutation", destructive: true }),
+    });
+  const exposed = (path = "/mcp") =>
+    mcpRoutes({
+      ...baseConfig,
+      registry: ops(),
+      path,
+      exposure: { default: "catalog", pin: ["p"] },
+    });
+
+  test("hybrid: catalog queries leave tools/list; pins get alwaysLoad; app-only get visibility", async () => {
+    const { result } = await rpc(exposed(), "tools/list");
+    const tools = result.tools as any[];
+    const names = tools.map((t) => t.name);
+    expect(names).not.toContain("q");
+    expect(names).not.toContain("m2");
+    expect(
+      tools.find((t) => t.name === "p")._meta["anthropic/alwaysLoad"],
+    ).toBe(true);
+    expect(tools.find((t) => t.name === "a")._meta.ui).toEqual({
+      x: 1,
+      visibility: ["app"],
+    });
+  });
+
+  test("two mounts with different exposure serve one registry", async () => {
+    const registry = ops();
+    const full = mcpRoutes({ ...baseConfig, registry });
+    const cat = mcpRoutes({
+      ...baseConfig,
+      registry,
+      path: "/mcp/catalog",
+      exposure: { default: "catalog" },
+    });
+    const a = await rpc(full, "tools/list");
+    expect(a.result.tools.map((t: any) => t.name)).toContain("q");
+    const res = await cat.request("/mcp/catalog", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+    const b = (await res.json()) as any;
+    expect(b.result.tools.map((t: any) => t.name)).not.toContain("q");
+  });
+
+  test("a catalog query is callable by name", async () => {
+    const { result } = await rpc(exposed(), "tools/call", {
+      name: "q",
+      arguments: {},
+    });
+    expect(result.structuredContent).toBeDefined();
+    expect(result.isError).toBeUndefined();
+  });
+
+  test("an unlisted catalog mutation is refused by name with a pointer", async () => {
+    const { result, error } = await rpc(exposed(), "tools/call", {
+      name: "m2",
+      arguments: {},
+    });
+    expect(result).toBeUndefined();
+    expect(error.code).toBe(-32601);
+    expect(error.message).toMatch(/run_write/);
+    const d = await rpc(exposed(), "tools/call", { name: "d2", arguments: {} });
+    expect(d.error.message).toMatch(/run_destructive/);
+  });
+
+  test("unknown pin throws at construction", () => {
+    expect(() =>
+      mcpRoutes({
+        ...baseConfig,
+        registry: ops(),
+        exposure: { pin: ["nope"] },
+      }),
+    ).toThrow(/nope/);
+  });
+});
