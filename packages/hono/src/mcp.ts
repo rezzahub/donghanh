@@ -44,6 +44,15 @@ export interface McpRoutesConfig {
   encodeVariables?: (vars: Record<string, unknown>) => string;
   /** Named widgets. Operation's `widget` config key must match a name here. */
   widgets?: Record<string, WidgetConfig>;
+  /**
+   * Final say on a tool's `outputSchema`. Called for every tool with the default
+   * wrapped schema (or undefined when the operation has no response schema);
+   * the return value is used as is, undefined omits it.
+   */
+  outputSchema?: (
+    op: OperationDetail,
+    wrapped: object | undefined,
+  ) => object | undefined;
   /** Hook to enrich `structuredContent` after execution (e.g. inject display text) */
   enrichResponse?: (
     structured: Record<string, unknown>,
@@ -118,12 +127,14 @@ function annotationsFor(detail: OperationDetail | null): {
   readOnlyHint: boolean;
   openWorldHint: boolean;
   destructiveHint: boolean;
+  idempotentHint: boolean;
 } {
   if (!detail) {
     return {
       readOnlyHint: false,
       openWorldHint: true,
       destructiveHint: false,
+      idempotentHint: false,
     };
   }
   const readOnly = detail.type === "query";
@@ -131,6 +142,7 @@ function annotationsFor(detail: OperationDetail | null): {
     readOnlyHint: readOnly,
     openWorldHint: readOnly ? false : (detail.external ?? false),
     destructiveHint: readOnly ? false : (detail.destructive ?? false),
+    idempotentHint: detail.idempotent ?? false,
   };
 }
 
@@ -158,6 +170,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     encodeVariables,
     widgets = {},
     enrichResponse,
+    outputSchema,
   } = config;
 
   const appInstructions = registry.instructions();
@@ -259,12 +272,34 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
             securitySchemes: securitySchemesFor(detail, scopes),
           };
 
+          if (detail?.title) tool.title = detail.title;
+
+          const responseKey = registry.get(op.id)?.operationConfig.responseKey;
+          const wrapped =
+            detail?.response && responseKey
+              ? {
+                  type: "object",
+                  properties: {
+                    [responseKey]: detail.response,
+                    actions: { type: "array" },
+                    display: {},
+                  },
+                  required: [responseKey],
+                }
+              : undefined;
+          const out = outputSchema
+            ? detail && outputSchema(detail, wrapped)
+            : enrichResponse
+              ? undefined
+              : wrapped;
+          if (out) tool.outputSchema = out;
+
+          const meta: Record<string, unknown> = { ...detail?.meta };
           if (widget) {
-            tool._meta = {
-              ui: { resourceUri: widget.uri },
-              "openai/outputTemplate": widget.uri,
-            };
+            meta.ui = { resourceUri: widget.uri };
+            meta["openai/outputTemplate"] = widget.uri;
           }
+          if (Object.keys(meta).length > 0) tool._meta = meta;
 
           return tool;
         });

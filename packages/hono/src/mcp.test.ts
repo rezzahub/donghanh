@@ -84,6 +84,7 @@ describe("mcpRoutes", () => {
       readOnlyHint: true,
       openWorldHint: false,
       destructiveHint: false,
+      idempotentHint: false,
     });
   });
 
@@ -103,6 +104,7 @@ describe("mcpRoutes", () => {
       readOnlyHint: false,
       openWorldHint: true,
       destructiveHint: true,
+      idempotentHint: false,
     });
   });
 
@@ -445,5 +447,85 @@ describe("mcpRoutes", () => {
     expect(
       (await app.request("/.well-known/oauth-protected-resource")).status,
     ).toBe(404);
+  });
+
+  describe("tool listing", () => {
+    const schema = { type: "object", properties: { n: { type: "number" } } };
+    const withResponse = (cfg: Record<string, unknown> = {}) =>
+      buildRegistry(App({ operations: { op: makeOp("op", cfg) } }), {
+        op: schema,
+      });
+    const list = async (config: Record<string, unknown>) =>
+      (await rpc(mcpRoutes({ ...baseConfig, ...config } as any), "tools/list"))
+        .result.tools[0];
+
+    test("tools carry title, idempotentHint and operation meta", async () => {
+      const op = makeOp("keep", {
+        type: "mutation",
+        title: "Keep candidate",
+        idempotent: true,
+        meta: { "x/y": 1 },
+      });
+      const tool = await list({ registry: makeApp({ op }) });
+      expect(tool.title).toBe("Keep candidate");
+      expect(tool.annotations).toEqual({
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      });
+      expect(tool._meta).toMatchObject({ "x/y": 1 });
+    });
+
+    test("widget keys win over operation meta", async () => {
+      const op = makeOp("ui", {
+        widget: "boards",
+        meta: { ui: "mine", "x/y": 1 },
+      });
+      const tool = await list({
+        registry: makeApp({ op }),
+        widgets: { boards: { uri: "ui://w/b.html", html: "<div/>" } },
+      });
+      expect(tool._meta.ui.resourceUri).toBe("ui://w/b.html");
+      expect(tool._meta["x/y"]).toBe(1);
+    });
+
+    test("outputSchema wraps the response schema under responseKey", async () => {
+      const tool = await list({ registry: withResponse() });
+      expect(tool.outputSchema).toEqual({
+        type: "object",
+        properties: { op: schema, actions: { type: "array" }, display: {} },
+        required: ["op"],
+      });
+    });
+
+    test("no outputSchema when enrichResponse is set without an outputSchema option", async () => {
+      const tool = await list({
+        registry: withResponse(),
+        enrichResponse: async () => {},
+      });
+      expect(tool.outputSchema).toBeUndefined();
+    });
+
+    test("the outputSchema option replaces or removes the schema", async () => {
+      const custom = { type: "object", properties: {} };
+      const replaced = await list({
+        registry: withResponse(),
+        enrichResponse: async () => {},
+        outputSchema: () => custom,
+      });
+      expect(replaced.outputSchema).toEqual(custom);
+      const removed = await list({
+        registry: withResponse(),
+        outputSchema: () => undefined,
+      });
+      expect(removed.outputSchema).toBeUndefined();
+    });
+
+    test("no outputSchema without a response schema", async () => {
+      const tool = await list({ registry: makeApp({ op: makeOp("op") }) });
+      expect(tool.outputSchema).toBeUndefined();
+      expect(tool._meta).toBeUndefined();
+    });
   });
 });
