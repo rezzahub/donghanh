@@ -1,0 +1,39 @@
+---
+const packages = [
+  {
+    name: "@donghanh/core",
+    text: "JSX runtime, primitives, registry, executor",
+  },
+  { name: "@donghanh/hono", text: "Hono routes for each channel" },
+  {
+    name: "@donghanh/react",
+    text: "Headless React hooks for self-hosted chat",
+  },
+  { name: "@donghanh/widget", text: "Runtime for Apps SDK iframe widgets" },
+  {
+    name: "@donghanh/widget-vite",
+    text: "Vite plugin that bundles widgets and emits a manifest",
+  },
+  { name: "create-donghanh", text: "CLI scaffolding tool" },
+];
+---
+
+<section class="section">
+  <p class="section-number">02</p>
+  <h2>Take only what you need.</h2>
+  <p class="section-text">
+    Start with the core and add a package for each place you ship.
+  </p>
+  <div class="grid">
+    {
+      packages.map((item) => (
+        <article class="card">
+          <h3>
+            <code>{item.name}</code>
+          </h3>
+          <p>{item.text}</p>
+        </article>
+      ))
+    }
+  </div>
+</section>

@@ -1,0 +1,42 @@
+---
+const channels = [
+  {
+    name: "Apps SDK",
+    routes: "mcpRoutes + @donghanh/widget",
+    text: "MCP over HTTP, with iframe widgets inside ChatGPT.",
+  },
+  {
+    name: "Self-hosted",
+    routes: "chatRoutes + @donghanh/react",
+    text: "Bring your own LLM and stream to a React UI over SSE.",
+  },
+  {
+    name: "GPT Store",
+    routes: "gptRoutes",
+    text: "REST and OpenAPI, running inside Custom GPTs.",
+    deprecated: true,
+  },
+];
+---
+
+<section class="section">
+  <p class="section-number">01</p>
+  <h2>Write it once. Reach every channel.</h2>
+  <p class="section-text">
+    Your operations stay the same. Pick the routes for where your users are.
+  </p>
+  <div class="grid">
+    {
+      channels.map((channel) => (
+        <article class:list={["card", { "card-faded": channel.deprecated }]}>
+          <h3>
+            {channel.name}
+            {channel.deprecated && <span class="badge">Deprecated</span>}
+          </h3>
+          <p>{channel.text}</p>
+          <code>{channel.routes}</code>
+        </article>
+      ))
+    }
+  </div>
+</section>

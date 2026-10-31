@@ -1,0 +1,50 @@
+---
+import Channels from "../components/home/Channels.astro";
+import ClosingCta from "../components/home/ClosingCta.astro";
+import Hero from "../components/home/Hero.astro";
+import Packages from "../components/home/Packages.astro";
+import Skills from "../components/home/Skills.astro";
+import "../styles/tokens.css";
+import "../styles/home.css";
+
+const description = "Build conversational interfaces with JSX.";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>donghanh</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="top">
+        <a class="wordmark" href="/">donghanh</a>
+        <nav aria-label="Main">
+          <a class="top-hide" href="/guides/introduction/">Docs</a>
+          <a class="top-hide" href="/concepts/primitives/">Concepts</a>
+          <a class="top-hide" href="/reference/core/">Reference</a>
+          <a href="https://github.com/rezzahub/donghanh">GitHub</a>
+          <a class="pill pill-small" href="/guides/quickstart/">Get started</a>
+        </nav>
+      </header>
+      <main>
+        <Hero />
+        <Channels />
+        <Packages />
+        <Skills />
+        <ClosingCta />
+      </main>
+      <footer class="footer">
+        <span>donghanh</span>
+        <nav aria-label="Footer">
+          <a href="/guides/introduction/">Docs</a>
+          <a href="https://github.com/rezzahub/donghanh">GitHub</a>
+        </nav>
+      </footer>
+    </div>
+  </body>
+</html>
