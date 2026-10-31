@@ -7,7 +7,7 @@ The same `<Brief>` tree renders differently depending on the target. Each target
 
 ## ChatGPT Renderer
 
-Used by `gptRoutes()` — produces JSON for the ChatGPT GPT Store.
+Used by `gptRoutes()` (deprecated) and `mcpRoutes()` — produces JSON for the ChatGPT GPT Store and Apps SDK.
 
 | Primitive | Output |
 |-----------|--------|

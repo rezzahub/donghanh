@@ -32,7 +32,7 @@ export interface DongHanhConfig {
   operations?: string;
   /** Named widget entries: name → entry file path. */
   widgets?: Record<string, string>;
-  /** Server defaults consumed by gptRoutes / mcpRoutes / chatRoutes. */
+  /** Server defaults consumed by mcpRoutes / chatRoutes / gptRoutes (deprecated). */
   server?: ServerConfig;
 }
 

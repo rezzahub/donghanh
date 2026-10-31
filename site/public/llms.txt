@@ -1,6 +1,6 @@
 # donghanh
 
-> Conversational UI framework. Build agent interfaces with JSX — operations declare what the agent sees with a `<Brief>` HUD, and a single operation tree renders to three targets: ChatGPT GPT Store (gptRoutes + OpenAPI), ChatGPT Apps SDK (mcpRoutes + widget iframe), and self-hosted React chat (chatRoutes + @donghanh/react).
+> Conversational UI framework. Build agent interfaces with JSX — operations declare what the agent sees with a `<Brief>` HUD, and a single operation tree renders to three targets: ChatGPT GPT Store, deprecated (gptRoutes + OpenAPI), ChatGPT Apps SDK (mcpRoutes + widget iframe), and self-hosted React chat (chatRoutes + @donghanh/react).
 
 donghanh is a TypeScript/JSX framework for building AI agent apps on Cloudflare Workers (or any Hono-compatible runtime). An **operation** is a screen — it defines a query/mutation handler and a component that returns a Brief of `<Message>`, `<Display>`, `<Action>`, and `<Form>` primitives. The same operation registry powers three adapters so you ship one codebase and deploy to multiple surfaces.
 
@@ -22,7 +22,7 @@ Versions current at time of writing: `@donghanh/core@0.3.0`, `@donghanh/hono@0.3
 ## Packages
 
 - [@donghanh/core](https://donghanh.dev/reference/core): JSX runtime, primitives, `buildRegistry`, `registerOperation`, `executeOperation`.
-- [@donghanh/hono](https://donghanh.dev/reference/hono): `gptRoutes` (GPT Store + `/public/*` for guest ops), `mcpRoutes` (Apps SDK), `chatRoutes` (self-hosted LLM chat), `generateOpenApi` (OpenAPI 3.1 from registry).
+- [@donghanh/hono](https://donghanh.dev/reference/hono): `gptRoutes` (deprecated: GPT Store + `/public/*` for guest ops), `mcpRoutes` (Apps SDK), `chatRoutes` (self-hosted LLM chat), `generateOpenApi` (OpenAPI 3.1 from registry).
 - [@donghanh/react](https://donghanh.dev/reference/react): `DongHanhProvider`, `useChat`, `useInitOperation` for self-hosted chat UIs.
 - [@donghanh/widget](https://donghanh.dev/reference/widget): iframe runtime for Apps SDK widgets — MCP postMessage bridge, React hooks (`useToolResult`, `useCallTool`, `useSendMessage`, `useUpdateModelContext`), default renderers.
 - [@donghanh/widget-vite](https://donghanh.dev/reference/widget-vite): Vite plugin that bundles widgets into inline HTML with content-hashed URIs + manifest.

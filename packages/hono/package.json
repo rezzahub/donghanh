@@ -1,7 +1,7 @@
 {
   "name": "@donghanh/hono",
   "version": "0.3.5",
-  "description": "Hono routes for GPT Store and LLM chat — renderers for ChatGPT and OpenAI-compatible APIs",
+  "description": "Hono routes for Apps SDK, LLM chat and GPT Store (deprecated) — renderers for ChatGPT and OpenAI-compatible APIs",
   "license": "MIT",
   "type": "module",
   "exports": {

@@ -9,7 +9,7 @@ You write operations as components. Each returns a `<Brief>` — the agent's HUD
 
 | Target | Adapter | What the agent sees |
 |--------|---------|-------------------|
-| **GPT Store (Custom GPTs)** | `gptRoutes` | REST JSON: `nextSteps`, `suggestedActions`, `display` |
+| **GPT Store (Custom GPTs)** (deprecated) | `gptRoutes` | REST JSON: `nextSteps`, `suggestedActions`, `display` |
 | **Apps SDK (MCP)** | `mcpRoutes` | MCP tools + widget iframe (`structuredContent`, `_meta.ui`) |
 | **Self-hosted React chat** | `chatRoutes` | Tool result text + action metadata streamed over SSE |
 

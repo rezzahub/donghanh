@@ -1,9 +1,13 @@
 ---
 title: "@donghanh/hono"
-description: Hono routes for GPT Store and LLM chat.
+description: Hono routes for Apps SDK, LLM chat and GPT Store (deprecated).
 ---
 
-## GPT Store Routes
+## GPT Store Routes (deprecated)
+
+:::caution[Deprecated]
+GPT Store support is deprecated. Use Apps SDK (`mcpRoutes`) for new projects. `gptRoutes` keeps working.
+:::
 
 ```ts
 import { gptRoutes } from "@donghanh/hono";

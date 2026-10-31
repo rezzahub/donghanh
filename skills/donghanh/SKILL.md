@@ -1,6 +1,6 @@
 ---
 name: donghanh
-description: Build conversational apps with donghanh — JSX primitives, operations, executor, and adapters for GPT Store, ChatGPT Apps SDK (MCP), and self-hosted React chat. Use when the user wants to create operations, wire an adapter, build widgets, or scaffold a donghanh app.
+description: Build conversational apps with donghanh — JSX primitives, operations, executor, and adapters for ChatGPT Apps SDK (MCP), self-hosted React chat, and GPT Store (deprecated). Use when the user wants to create operations, wire an adapter, build widgets, or scaffold a donghanh app.
 ---
 
 # donghanh
@@ -9,7 +9,7 @@ donghanh is a framework for building conversational apps. Same operations power 
 
 | Mode | Adapter | Protocol | UI |
 |---|---|---|---|
-| GPT Store | `@donghanh/hono` `gptRoutes` | REST (GPT Actions) | ChatGPT default |
+| GPT Store (deprecated) | `@donghanh/hono` `gptRoutes` | REST (GPT Actions) | ChatGPT default |
 | GPT Apps | `@donghanh/hono` `mcpRoutes` + `@donghanh/widget` | MCP over HTTP | iframe widget |
 | React | `@donghanh/hono` `chatRoutes` + `@donghanh/react` | SSE chat | self-hosted React |
 
@@ -131,6 +131,8 @@ export default defineConfig({
 ## Adapters
 
 ### GPT Store — `gptRoutes`
+
+> **Deprecated:** GPT Store support is deprecated. Use Apps SDK (`mcpRoutes`) for new projects. `gptRoutes` keeps working.
 
 Exposes `GET /operations`, `GET /query/:op`, `POST /mutate/:op`. ChatGPT treats as GPT Actions via OpenAPI. No UI control.
 

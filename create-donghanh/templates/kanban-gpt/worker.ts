@@ -43,7 +43,7 @@ app.use("/*", async (c, next) => {
   await next();
 });
 
-// GPT Store operations
+// GPT Store operations (deprecated, use mcpRoutes below)
 app.route("/api", gptRoutes({ registry, executor, authenticate }));
 
 // ChatGPT Apps SDK (MCP)

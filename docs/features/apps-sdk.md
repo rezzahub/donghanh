@@ -8,7 +8,7 @@ Same operations + executor power three modes:
 
 | Mode | Adapter | Protocol | UI |
 |---|---|---|---|
-| GPT Store | `@donghanh/hono` `gptRoutes` | REST (GPT Actions) | ChatGPT default |
+| GPT Store (deprecated) | `@donghanh/hono` `gptRoutes` | REST (GPT Actions) | ChatGPT default |
 | GPT Apps | `@donghanh/hono` `mcpRoutes` + `@donghanh/widget` | MCP over HTTP | iframe widget |
 | React | `@donghanh/hono` `chatRoutes` + `@donghanh/react` | SSE chat | Self-hosted React |
 
