@@ -150,7 +150,11 @@ site-search button[data-open-modal] {
   color: var(--mute);
 }
 
-/* Top bar links */
+/* Top bar links. The separator only made sense beside the theme switch. */
+header .social-icons::after {
+  display: none;
+}
+
 .top-links {
   align-items: center;
   display: flex;
