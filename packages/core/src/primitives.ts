@@ -36,6 +36,7 @@ export interface ContextNode {
 export interface AppNode {
   type: "app";
   operations: OperationRef[];
+  instructions?: string;
 }
 
 export interface FieldDef {
@@ -121,9 +122,12 @@ export function Context(props: { value: unknown }): ContextNode {
 
 export function App(props: {
   operations: Record<string, OperationComponentAny>;
+  instructions?: string;
 }): AppNode {
   const ops = Object.values(props.operations).map((component) => ({
     component,
   }));
-  return { type: "app", operations: ops };
+  const node: AppNode = { type: "app", operations: ops };
+  if (props.instructions !== undefined) node.instructions = props.instructions;
+  return node;
 }

@@ -48,7 +48,7 @@ just publish <core|hono|react|widget|widget-vite|create> <otp>
 
 ## Version bumping
 
-All `@donghanh/*` packages share a major/minor (0.2.0 now). Bump together for breaking changes. Update `peerDependencies["@donghanh/core"]` in hono/react/widget to match.
+`@donghanh/core`, `hono`, `react` and `config` share a major/minor (0.4.0 now); `widget`, `widget-vite` and `cli` version separately. Bump the shared ones together for breaking changes. Update `peerDependencies["@donghanh/core"]` in hono/react/widget to match.
 
 ## Testing
 

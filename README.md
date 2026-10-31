@@ -67,6 +67,16 @@ bunx create-donghanh my-app --template minimal     # 2 operations, D1 SQLite
 bunx create-donghanh my-app --template kanban-gpt  # 6 operations, OAuth, Better Auth
 ```
 
+## Many operations
+
+By default every operation is an MCP tool. For apps with many operations, `mcpRoutes` takes `exposure` to keep a few as tools and put the rest in a catalog behind `find_operations`, `get_operation`, `run_read`, `run_write` and `run_destructive`:
+
+```ts
+mcpRoutes({ /* ... */ exposure: { default: "tool", catalog: { type: "query" }, pin: ["start"] } });
+```
+
+`App({ operations, instructions })` carries the app's playbook; every adapter uses it (`initialize.instructions` for MCP). `@donghanh/core/skills` adds searchable skills. See the docs site for details.
+
 ## Architecture
 
 ```

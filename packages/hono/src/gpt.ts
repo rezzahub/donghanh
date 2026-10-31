@@ -77,7 +77,12 @@ export function gptRoutes(config: GptRoutesConfig): Hono {
       });
     }
 
-    return c.json({ operations });
+    const instructions = registry.instructions();
+    return c.json(
+      instructions === undefined
+        ? { operations }
+        : { instructions, operations },
+    );
   });
 
   // Operation detail

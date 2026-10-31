@@ -1,11 +1,18 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import type {
   ChatNode,
   Executor,
   OperationComponent,
   OperationConfig,
 } from "@donghanh/core";
-import { App, Brief, buildRegistry, Display, Message } from "@donghanh/core";
+import {
+  Action,
+  App,
+  Brief,
+  buildRegistry,
+  Display,
+  Message,
+} from "@donghanh/core";
 import { mcpRoutes } from "./mcp";
 
 function makeOp(
@@ -58,7 +65,7 @@ describe("mcpRoutes", () => {
   test("initialize returns protocol version + capabilities", async () => {
     const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
     const { result } = await rpc(app, "initialize");
-    expect(result.protocolVersion).toBe("2026-01-26");
+    expect(result.protocolVersion).toBe("2025-11-25");
     expect(result.capabilities.tools).toEqual({});
   });
 
@@ -84,6 +91,7 @@ describe("mcpRoutes", () => {
       readOnlyHint: true,
       openWorldHint: false,
       destructiveHint: false,
+      idempotentHint: false,
     });
   });
 
@@ -103,6 +111,7 @@ describe("mcpRoutes", () => {
       readOnlyHint: false,
       openWorldHint: true,
       destructiveHint: true,
+      idempotentHint: false,
     });
   });
 
@@ -259,6 +268,87 @@ describe("mcpRoutes", () => {
     expect(result.structuredContent.display).toEqual({ x: 1 });
   });
 
+  test("actions are appended to the text as a Next block", async () => {
+    const list = makeOp("list", {}, () =>
+      Brief({
+        children: [
+          Message({ children: "3 items." }),
+          Action({ operation: "add_item", label: "Add an item" }),
+        ],
+      }),
+    );
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({ list, add_item: makeOp("add_item") }),
+    });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    expect(result.content[0].text).toBe(
+      "3 items.\n\nNext:\n- Add an item (add_item)",
+    );
+    expect(result.structuredContent.actions).toHaveLength(1);
+  });
+
+  test("actionsInText:false keeps the text unchanged", async () => {
+    const list = makeOp("list", {}, () =>
+      Brief({
+        children: [
+          Message({ children: "3 items." }),
+          Action({ operation: "add_item", label: "Add an item" }),
+        ],
+      }),
+    );
+    const app = mcpRoutes({
+      ...baseConfig,
+      actionsInText: false,
+      registry: makeApp({ list, add_item: makeOp("add_item") }),
+    });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    expect(result.content[0].text).toBe("3 items.");
+    expect(result.structuredContent.actions).toHaveLength(1);
+  });
+
+  test("no Next block when there are no actions", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({
+        list: makeOp("list", {}, () =>
+          Brief({ children: [Message({ children: "3 items." })] }),
+        ),
+      }),
+    });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    expect(result.content[0].text).toBe("3 items.");
+    expect(result.structuredContent.actions).toBeUndefined();
+  });
+
+  test("actions without a message give a bare Next block", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({
+        list: makeOp("list", {}, () =>
+          Brief({
+            children: [Action({ operation: "add_item", label: "Add an item" })],
+          }),
+        ),
+        add_item: makeOp("add_item"),
+      }),
+    });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    expect(result.content[0].text).toBe("Next:\n- Add an item (add_item)");
+  });
+
   test("tools/call: enrichResponse can add fields to structuredContent", async () => {
     const app = mcpRoutes({
       ...baseConfig,
@@ -309,5 +399,419 @@ describe("mcpRoutes", () => {
     expect(body.resource).toBe("https://app.example.com");
     expect(body.authorization_servers).toEqual(["https://auth.example.com"]);
     expect(body.scopes_supported).toEqual(["read", "write"]);
+  });
+
+  test("initialize echoes each supported version", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    for (const v of ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]) {
+      const { result } = await rpc(app, "initialize", { protocolVersion: v });
+      expect(result.protocolVersion).toBe(v);
+    }
+  });
+
+  test("initialize answers unknown or missing versions with the newest", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    expect(
+      (await rpc(app, "initialize", { protocolVersion: "2099-01-01" })).result
+        .protocolVersion,
+    ).toBe("2025-11-25");
+    expect((await rpc(app, "initialize")).result.protocolVersion).toBe(
+      "2025-11-25",
+    );
+  });
+
+  test("initialize carries app instructions plus the endpoint suffix", async () => {
+    const reg = buildRegistry(App({ operations: {}, instructions: "Play." }));
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: reg,
+      instructionsSuffix: " Use find_operations.",
+    });
+    expect((await rpc(app, "initialize")).result.instructions).toBe(
+      "Play. Use find_operations.",
+    );
+  });
+
+  test("no instructions key when the app has none", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({}),
+      instructionsSuffix: " Suffix.",
+    });
+    const { result } = await rpc(app, "initialize");
+    expect("instructions" in result).toBe(false);
+  });
+
+  test("warns once at startup above 4096 characters", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const reg = buildRegistry(
+        App({ operations: {}, instructions: "x".repeat(4097) }),
+      );
+      const app = mcpRoutes({ ...baseConfig, registry: reg });
+      await rpc(app, "initialize");
+      await rpc(app, "initialize");
+      expect(warn).toHaveBeenCalledTimes(1);
+      warn.mockClear();
+      mcpRoutes({
+        ...baseConfig,
+        registry: buildRegistry(
+          App({ operations: {}, instructions: "x".repeat(4096) }),
+        ),
+      });
+      expect(warn).toHaveBeenCalledTimes(0);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  test("ping answers an empty result", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    expect(await rpc(app, "ping")).toEqual<unknown>({
+      jsonrpc: "2.0",
+      id: 1,
+      result: {},
+    });
+  });
+
+  test("templates and prompts list empty", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    expect(
+      (await rpc(app, "resources/templates/list")).result.resourceTemplates,
+    ).toEqual([]);
+    expect((await rpc(app, "prompts/list")).result.prompts).toEqual([]);
+  });
+
+  test("any notification is 202 with an empty body", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    for (const method of [
+      "notifications/initialized",
+      "notifications/roots/list_changed",
+    ]) {
+      const res = await app.request("/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method }),
+      });
+      expect(res.status).toBe(202);
+      expect(await res.text()).toBe("");
+    }
+  });
+
+  test("unknown method, tool and resource are -32601 with HTTP 200", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    const calls: Array<[string, Record<string, unknown>?]> = [
+      ["nope/method"],
+      ["tools/call", { name: "nope" }],
+      ["resources/read", { uri: "ui://nope" }],
+    ];
+    for (const [method, params] of calls) {
+      const res = await app.request("/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as any).error.code).toBe(-32601);
+    }
+  });
+
+  test("path mounts the endpoint elsewhere; metadata:false skips the metadata route", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({}),
+      path: "/agent",
+      metadata: false,
+    });
+    const post = (p: string) =>
+      app.request(p, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+      });
+    expect((await post("/agent")).status).toBe(200);
+    expect((await post("/mcp")).status).toBe(404);
+    expect((await app.request("/agent")).status).toBe(405);
+    expect(
+      (await app.request("/.well-known/oauth-protected-resource")).status,
+    ).toBe(404);
+  });
+
+  describe("tool listing", () => {
+    const schema = { type: "object", properties: { n: { type: "number" } } };
+    const withResponse = (cfg: Record<string, unknown> = {}) =>
+      buildRegistry(App({ operations: { op: makeOp("op", cfg) } }), {
+        op: schema,
+      });
+    const list = async (config: Record<string, unknown>) =>
+      (await rpc(mcpRoutes({ ...baseConfig, ...config } as any), "tools/list"))
+        .result.tools[0];
+
+    test("tools carry title, idempotentHint and operation meta", async () => {
+      const op = makeOp("keep", {
+        type: "mutation",
+        title: "Keep candidate",
+        idempotent: true,
+        meta: { "x/y": 1 },
+      });
+      const tool = await list({ registry: makeApp({ op }) });
+      expect(tool.title).toBe("Keep candidate");
+      expect(tool.annotations).toEqual({
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: true,
+      });
+      expect(tool._meta).toMatchObject({ "x/y": 1 });
+    });
+
+    test("widget keys win over operation meta", async () => {
+      const op = makeOp("ui", {
+        widget: "boards",
+        meta: { ui: "mine", "x/y": 1 },
+      });
+      const tool = await list({
+        registry: makeApp({ op }),
+        widgets: { boards: { uri: "ui://w/b.html", html: "<div/>" } },
+      });
+      expect(tool._meta.ui.resourceUri).toBe("ui://w/b.html");
+      expect(tool._meta["x/y"]).toBe(1);
+    });
+
+    test("outputSchema wraps the response schema under responseKey", async () => {
+      const tool = await list({ registry: withResponse() });
+      expect(tool.outputSchema).toEqual({
+        type: "object",
+        properties: { op: schema, actions: { type: "array" }, display: {} },
+        required: ["op"],
+      });
+    });
+
+    test("no outputSchema when enrichResponse is set without an outputSchema option", async () => {
+      const tool = await list({
+        registry: withResponse(),
+        enrichResponse: async () => {},
+      });
+      expect(tool.outputSchema).toBeUndefined();
+    });
+
+    test("the outputSchema option replaces or removes the schema", async () => {
+      const custom = { type: "object", properties: {} };
+      const replaced = await list({
+        registry: withResponse(),
+        enrichResponse: async () => {},
+        outputSchema: () => custom,
+      });
+      expect(replaced.outputSchema).toEqual(custom);
+      const removed = await list({
+        registry: withResponse(),
+        outputSchema: () => undefined,
+      });
+      expect(removed.outputSchema).toBeUndefined();
+    });
+
+    test("no outputSchema without a response schema", async () => {
+      const tool = await list({ registry: makeApp({ op: makeOp("op") }) });
+      expect(tool.outputSchema).toBeUndefined();
+      expect(tool._meta).toBeUndefined();
+    });
+  });
+});
+
+describe("mcpRoutes exposure", () => {
+  const ops = () =>
+    makeApp({
+      p: makeOp("p"),
+      q: makeOp("q"),
+      a: makeOp("a", { appCallable: true, meta: { ui: { x: 1 } } }),
+      m2: makeOp("m2", { type: "mutation" }),
+      d2: makeOp("d2", { type: "mutation", destructive: true }),
+    });
+  const exposed = (path = "/mcp") =>
+    mcpRoutes({
+      ...baseConfig,
+      registry: ops(),
+      path,
+      exposure: { default: "catalog", pin: ["p"] },
+    });
+
+  test("hybrid: catalog queries leave tools/list; pins get alwaysLoad; app-only get visibility", async () => {
+    const { result } = await rpc(exposed(), "tools/list");
+    const tools = result.tools as any[];
+    const names = tools.map((t) => t.name);
+    expect(names).not.toContain("q");
+    expect(names).not.toContain("m2");
+    expect(
+      tools.find((t) => t.name === "p")._meta["anthropic/alwaysLoad"],
+    ).toBe(true);
+    expect(tools.find((t) => t.name === "a")._meta.ui).toEqual({
+      x: 1,
+      visibility: ["app"],
+    });
+  });
+
+  test("two mounts with different exposure serve one registry", async () => {
+    const registry = ops();
+    const full = mcpRoutes({ ...baseConfig, registry });
+    const cat = mcpRoutes({
+      ...baseConfig,
+      registry,
+      path: "/mcp/catalog",
+      exposure: { default: "catalog" },
+    });
+    const a = await rpc(full, "tools/list");
+    expect(a.result.tools.map((t: any) => t.name)).toContain("q");
+    const res = await cat.request("/mcp/catalog", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+    const b = (await res.json()) as any;
+    expect(b.result.tools.map((t: any) => t.name)).not.toContain("q");
+  });
+
+  test("a catalog query is callable by name", async () => {
+    const { result } = await rpc(exposed(), "tools/call", {
+      name: "q",
+      arguments: {},
+    });
+    expect(result.structuredContent).toBeDefined();
+    expect(result.isError).toBeUndefined();
+  });
+
+  test("an unlisted catalog mutation is refused by name with a pointer", async () => {
+    const { result, error } = await rpc(exposed(), "tools/call", {
+      name: "m2",
+      arguments: {},
+    });
+    expect(result).toBeUndefined();
+    expect(error.code).toBe(-32601);
+    expect(error.message).toMatch(/run_write/);
+    const d = await rpc(exposed(), "tools/call", { name: "d2", arguments: {} });
+    expect(d.error.message).toMatch(/run_destructive/);
+  });
+
+  test("unknown pin throws at construction", () => {
+    expect(() =>
+      mcpRoutes({
+        ...baseConfig,
+        registry: ops(),
+        exposure: { pin: ["nope"] },
+      }),
+    ).toThrow(/nope/);
+  });
+});
+
+describe("invalid method", () => {
+  test("a non-string method is Invalid Request, not a 500", async () => {
+    const app = mcpRoutes({
+      resource: "https://app.example.com",
+      authorizationServers: ["https://auth.example.com"],
+      scopes: ["read"],
+      authenticate: async () => ({ userId: "u1" }) as any,
+      registry: buildRegistry(App({ operations: {} })),
+      executor: (async () => ({})) as any,
+    });
+    const res = await app.request("/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: 123 }),
+    });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as any).error.code).toBe(-32600);
+  });
+});
+
+describe("Next block formats", () => {
+  const nextText = async (exposure?: any) => {
+    const list = makeOp("list", {}, () =>
+      Brief({
+        children: [
+          Message({ children: "Done." }),
+          Action({ operation: "q", label: "Read", variables: { a: 1 } }),
+          Action({ operation: "m2", label: "Write" }),
+          Action({ operation: "d2", label: "Drop", variables: { id: "x" } }),
+          Action({ operation: "p", label: "Tool", variables: { b: "c" } }),
+        ],
+      }),
+    );
+    const registry = makeApp({
+      list,
+      p: makeOp("p"),
+      q: makeOp("q"),
+      m2: makeOp("m2", { type: "mutation" }),
+      d2: makeOp("d2", { type: "mutation", destructive: true }),
+    });
+    const app = mcpRoutes({ ...baseConfig, registry, exposure });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    return result.content[0].text as string;
+  };
+
+  test("listed tools carry compact variables inside the parentheses", async () => {
+    const text = await nextText();
+    expect(text).toContain('- Read (q {"a":1})');
+    expect(text).toContain("- Write (m2)");
+    expect(text).toContain('- Tool (p {"b":"c"})');
+  });
+
+  test("catalog-placed operations name their run_* tool", async () => {
+    const text = await nextText({ default: "catalog", pin: ["p", "list"] });
+    expect(text).toContain('- Read (run_read id="q" variables={"a":1})');
+    expect(text).toContain('- Write (run_write id="m2")');
+    expect(text).toContain(
+      '- Drop (run_destructive id="d2" variables={"id":"x"})',
+    );
+    expect(text).toContain('- Tool (p {"b":"c"})');
+  });
+});
+
+describe("request body shape", () => {
+  const post = async (body: unknown) => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({ q: makeOp("q") }),
+    });
+    const res = await app.request("/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, json: (await res.json()) as any };
+  };
+
+  for (const [name, body] of [
+    ["null", null],
+    ["an array", [{ jsonrpc: "2.0", id: 1, method: "ping" }]],
+    ["a number", 5],
+    ["a string", "x"],
+  ] as const) {
+    test(`${name} is -32600 Invalid Request with HTTP 400`, async () => {
+      const r = await post(body);
+      expect(r.status).toBe(400);
+      expect(r.json.error.code).toBe(-32600);
+    });
+  }
+});
+
+describe("widget meta merge", () => {
+  test("tools/list keeps an existing meta.ui next to the widget uri", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({
+        ui: makeOp("ui", {
+          widget: "boards",
+          meta: { ui: { visibility: ["app"], resourceUri: "ui://old" } },
+        }),
+      }),
+      widgets: { boards: { uri: "ui://w/b.html", html: "<div/>" } },
+    });
+    const { result } = await rpc(app, "tools/list");
+    expect(result.tools[0]._meta.ui).toEqual({
+      visibility: ["app"],
+      resourceUri: "ui://w/b.html",
+    });
   });
 });

@@ -45,6 +45,7 @@ export default defineConfig({
           items: [
             { label: "Introduction", slug: "guides/introduction" },
             { label: "Quick Start", slug: "guides/quickstart" },
+            { label: "Many operations", slug: "guides/many-operations" },
           ],
         },
         {

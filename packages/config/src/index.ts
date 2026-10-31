@@ -8,6 +8,9 @@ export interface CspConfig {
   frameDomains?: string[];
 }
 
+/**
+ * @deprecated Pass these to mcpRoutes/chatRoutes; App({ instructions }) replaces systemPrompt. Removed in 0.5.
+ */
 export interface ServerConfig {
   /** Canonical HTTPS identifier for this MCP server. */
   resource?: string;
@@ -32,7 +35,10 @@ export interface DongHanhConfig {
   operations?: string;
   /** Named widget entries: name → entry file path. */
   widgets?: Record<string, string>;
-  /** Server defaults consumed by mcpRoutes / chatRoutes / gptRoutes (deprecated). */
+  /**
+   * Server defaults consumed by mcpRoutes / chatRoutes / gptRoutes (deprecated).
+   * @deprecated Pass these to mcpRoutes/chatRoutes; App({ instructions }) replaces systemPrompt. Removed in 0.5.
+   */
   server?: ServerConfig;
 }
 
