@@ -102,6 +102,8 @@ type PathItem = Partial<Record<"get" | "post", Operation>>;
  * - `auth: "required"` (default) → path under `${basePath}/query/...` with bearerAuth
  * - `auth: "optional"` → two entries: the default path with bearerAuth AND `/public/...` with no security
  * - `auth: "none"` → single entry under `${basePath}/public/...` with no security
+ *
+ * @deprecated GPT Store support is deprecated. Use mcpRoutes (Apps SDK) for new projects.
  */
 export function generateOpenApi(config: GenerateOpenApiConfig): object {
   const {

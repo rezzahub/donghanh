@@ -9,7 +9,7 @@ interface Data {
 function AddItem({ data }: OperationProps<Data>) {
   return (
     <Brief>
-      Item added! You now have {data.items.length} item(s).
+      {`Item added! You now have ${data.items.length} item(s).`}
       <Display data={data.items} />
       <Action operation="add-item" label="Add another" />
       <Action operation="list-items" label="View all" />
@@ -30,4 +30,6 @@ export default registerOperation(AddItem, {
     },
   },
   responseKey: "addItem",
+  // This template has no sign-in. Remove this once you add real auth.
+  auth: "none",
 });

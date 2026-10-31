@@ -13,8 +13,10 @@ bun run dev
 ## Try it
 
 ```bash
-curl localhost:8787/api/operations
-curl localhost:8787/api/query/list-items
+curl -X POST localhost:8787/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+curl -X POST localhost:8787/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list-items","arguments":{}}}'
 ```
 
 ## Deploy
@@ -24,3 +26,5 @@ npx wrangler d1 create my-donghanh-app-db
 # Copy the database_id into wrangler.toml
 npx wrangler deploy
 ```
+
+Then set `resource` in `worker.ts` to your deployed URL and deploy again. MCP clients check it against the URL they connect to.

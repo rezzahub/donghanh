@@ -1,6 +1,6 @@
 # Kanban GPT
 
-A kanban board powered by [@donghanh](https://github.com/rezzahub/donghanh). Ships with three adapters sharing the same operations: GPT Store (GPT Actions), ChatGPT Apps SDK (MCP), and self-hosted chat.
+A kanban board powered by [@donghanh](https://github.com/rezzahub/donghanh). Ships with three adapters sharing the same operations: ChatGPT Apps SDK (MCP), self-hosted chat, and GPT Store (GPT Actions, deprecated).
 
 ## Setup
 
@@ -25,6 +25,8 @@ bun run dev
 | `add-member` | mutation | Add member to board |
 
 ## GPT Store setup
+
+> **Deprecated:** GPT Store support is deprecated. Use Apps SDK (`mcpRoutes`) for new projects. `gptRoutes` keeps working.
 
 1. Create a GPT Action in the [ChatGPT GPT Store editor](https://chatgpt.com/gpts/editor)
 2. Set the API server URL to your deployed worker URL

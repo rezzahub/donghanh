@@ -1,0 +1,36 @@
+---
+import CopyCommand from "./CopyCommand.astro";
+
+const skills = [
+  {
+    name: "donghanh",
+    text: "Core concepts, adapters, protocol rules and common pitfalls.",
+  },
+  {
+    name: "donghanh-prompts",
+    text: "Where to put steering text in your operations.",
+  },
+];
+---
+
+<section class="section">
+  <p class="section-number">03</p>
+  <h2>Teach your coding agent.</h2>
+  <p class="section-text">
+    Install the skills so Claude Code, Cursor or Copilot CLI can work in a
+    donghanh codebase.
+  </p>
+  <CopyCommand command="npx skills add rezzahub/donghanh" />
+  <div class="stack skills">
+    {
+      skills.map((skill) => (
+        <article class="card">
+          <h3>
+            <code>{skill.name}</code>
+          </h3>
+          <p>{skill.text}</p>
+        </article>
+      ))
+    }
+  </div>
+</section>

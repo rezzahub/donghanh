@@ -1,0 +1,49 @@
+---
+import { Code } from "astro:components";
+import type { ComponentProps } from "astro/types";
+import codeTheme from "../../styles/code-theme.json";
+import CopyCommand from "./CopyCommand.astro";
+
+const example = `function ListItems({ data }) {
+  return (
+    <Brief>
+      {\`You have \${data.items.length} items.\`}
+      <Display data={data.items} />
+      <Action operation="add-item"
+              label="Add an item" />
+    </Brief>
+  );
+}`;
+---
+
+<section class="hero">
+  <h1>Write your agent UI in JSX.<br /><span>Ship it to every chat.</span></h1>
+  <p class="lede">
+    Describe what your agent can say and do once.
+    <strong>Run it in ChatGPT or your own app.</strong>
+  </p>
+  <div class="cta">
+    <a class="pill" href="/guides/introduction/">Read the docs</a>
+    <CopyCommand command="bunx create-donghanh my-app" />
+  </div>
+
+  <div class="panels">
+    <figure class="panel">
+      <figcaption>list-items.tsx</figcaption>
+      <Code code={example} lang="tsx" theme={codeTheme as ComponentProps<typeof Code>["theme"]} />
+    </figure>
+    <figure class="panel">
+      <figcaption>In ChatGPT, with an Apps SDK widget</figcaption>
+      <div class="chat">
+        <p class="chat-user">What's on my list?</p>
+        <p>You have 3 items.</p>
+        <ul class="chat-list">
+          <li>Book flights</li>
+          <li>Renew passport</li>
+          <li>Pack bags</li>
+        </ul>
+        <span class="chat-action">Add an item</span>
+      </div>
+    </figure>
+  </div>
+</section>

@@ -1,5 +1,5 @@
 import { App, buildRegistry } from "@donghanh/core";
-import { gptRoutes } from "@donghanh/hono";
+import { mcpRoutes } from "@donghanh/hono";
 import { Hono } from "hono";
 import { createExecutor } from "./executor";
 import { operations } from "./operations";
@@ -20,14 +20,17 @@ app.use("/*", async (c, next) => {
 });
 
 app.route(
-  "/api",
-  gptRoutes({
+  "/",
+  mcpRoutes({
     registry,
     executor: (opId, vars, ctx) => createExecutor(_db)(opId, vars, ctx),
     authenticate: async () => ({ userId: "anonymous" }),
+    // Replace with your deployed URL
+    resource: "https://example.com",
+    authorizationServers: [],
   }),
 );
 
-app.get("/", (c) => c.text("donghanh app running. Try GET /api/operations"));
+app.get("/", (c) => c.text("donghanh app running. MCP endpoint: POST /mcp"));
 
 export default app;

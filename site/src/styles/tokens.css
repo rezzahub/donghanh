@@ -1,0 +1,18 @@
+/* Shared design tokens for the homepage and docs */
+
+:root {
+  color-scheme: dark;
+
+  --bg: #0e0f11;
+  --fg: #f3f3f4;
+  --text: #c9ccd2;
+  --mute: #8a8e96;
+  --dim: #7f838b;
+  --line: #1f2125;
+  --card: #131416;
+  --raised: #1b1d21;
+  --accent: #4fd1a0;
+
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}

@@ -36,7 +36,7 @@ export interface DongHanhConfig {
   /** Named widget entries: name → entry file path. */
   widgets?: Record<string, string>;
   /**
-   * Server defaults consumed by gptRoutes / mcpRoutes / chatRoutes.
+   * Server defaults consumed by mcpRoutes / chatRoutes / gptRoutes (deprecated).
    * @deprecated Pass these to mcpRoutes/chatRoutes; App({ instructions }) replaces systemPrompt. Removed in 0.5.
    */
   server?: ServerConfig;

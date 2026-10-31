@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { ChatNode, Renderer } from "./index";
 import { Fragment, jsx, jsxs } from "./jsx-runtime";
 // Test the JSX runtime + primitives by simulating what the transpiler produces
-import { Action, Brief, Display } from "./primitives";
+import { Action, Brief, Display, Message } from "./primitives";
 import { renderNode } from "./render";
 
 // Simple renderer that collects node types for verification
@@ -135,5 +135,45 @@ describe("Brief with nested fragments from map", () => {
     // Should not throw on null/undefined/false children
     const types = renderNode(brief as ChatNode, collectTypes);
     expect(types).toContain("action:a");
+  });
+});
+
+const action = { operation: "a", label: "A" };
+
+describe("text children", () => {
+  const messages = (brief: ChatNode) =>
+    renderNode(brief, collectTypes).filter((t) => t.startsWith("message:"));
+
+  test("a number between text renders as one message", () => {
+    const brief = jsxs(Brief as never, {
+      children: ["You have ", 3, " items."],
+    });
+    expect(messages(brief)).toEqual(["message:You have 3 items."]);
+  });
+
+  test("a lone zero is kept", () => {
+    const brief = jsx(Brief as never, { children: 0 });
+    expect(messages(brief)).toEqual(["message:0"]);
+  });
+
+  test("a zero inside a fragment is kept", () => {
+    const brief = jsx(Brief as never, {
+      children: jsx(Fragment as never, { children: 0 }),
+    });
+    expect(messages(brief)).toEqual(["message:0"]);
+  });
+
+  test("an element keeps the text on each side separate", () => {
+    const brief = jsxs(Brief as never, {
+      children: ["before ", 1, jsx(Action as never, action), "after"],
+    });
+    expect(messages(brief)).toEqual(["message:before 1", "message:after"]);
+  });
+
+  test("Message joins mixed children", () => {
+    const node = jsxs(Message as never, {
+      children: ["Use version ", 2, " next."],
+    });
+    expect(node).toEqual({ type: "message", content: "Use version 2 next." });
   });
 });

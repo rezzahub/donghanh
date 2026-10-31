@@ -16,7 +16,7 @@ function ListBoards({ data }: OperationProps<Data>) {
   }
   return (
     <Brief>
-      You have {data.boards.length} board(s).
+      {`You have ${data.boards.length} board(s).`}
       <Display data={data.boards.map(b => `${b.name} (${b.card_count} cards, ${b.member_count} members)`)} />
       {data.boards.map(b => (
         <Action operation="board-detail" label={`View ${b.name}`} variables={{ boardId: b.id }} />
@@ -31,7 +31,7 @@ export default registerOperation(ListBoards, {
   type: "query",
   description: "List all boards",
   instruction: "Call this first to see available boards.",
-  input: {},
+  input: { type: "object", properties: {} },
   responseKey: "listBoards",
   widget: "task-card",
 });

@@ -1,0 +1,31 @@
+---
+interface Props {
+  command: string;
+}
+
+const { command } = Astro.props;
+---
+
+<div class="cmd">
+  <code><span class="cmd-prompt">$</span> <span class="cmd-text">{command}</span></code>
+  <button type="button" class="cmd-copy" data-command={command}>Copy</button>
+</div>
+
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>(
+    ".cmd-copy",
+  )) {
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.command ?? "");
+      } catch {
+        // Clipboard unavailable: the command stays selectable.
+        return;
+      }
+      button.textContent = "Copied";
+      setTimeout(() => {
+        button.textContent = "Copy";
+      }, 2000);
+    });
+  }
+</script>

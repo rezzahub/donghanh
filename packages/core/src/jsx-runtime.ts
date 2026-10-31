@@ -19,6 +19,6 @@ export function jsxs(
 export function Fragment(props: {
   children?: ChatNode | ChatNode[];
 }): ChatNode[] {
-  if (!props.children) return [];
+  if (props.children == null) return [];
   return Array.isArray(props.children) ? props.children : [props.children];
 }

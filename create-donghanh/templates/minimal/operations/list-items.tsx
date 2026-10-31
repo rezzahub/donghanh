@@ -22,11 +22,10 @@ export default registerOperation(ListItems, {
   type: "query",
   description: "List all items",
   instruction: "Call this to see all items.",
-  input: {},
+  input: { type: "object", properties: {} },
   responseKey: "listItems",
-  // auth: "none" marks this op as callable anonymously. Your /public/query/list-items
-  // route will serve it without a Bearer token — handy for ChatGPT Actions whose
-  // OpenAPI security is per-path. Trade-off: the op cannot read a user-specific
+  // auth: "none" marks this op as callable anonymously: mcpRoutes serves it
+  // without a Bearer token. Trade-off: the op cannot read a user-specific
   // context. Switch to "optional" if you want both (anon by default, richer when linked).
   auth: "none",
 });

@@ -2,7 +2,7 @@
 
 Conversational UI framework. Build agent interfaces with JSX.
 
-Operations declare what the agent sees with `<Brief>` — the framework renders it differently per target (ChatGPT GPT Store, LLM tool results, in-app chat).
+Operations declare what the agent sees with `<Brief>` — the framework renders it differently per target (ChatGPT Apps SDK, LLM tool results, in-app chat, and the deprecated GPT Store).
 
 ## Quick Start
 
@@ -22,7 +22,7 @@ import { Action, Brief, Display, registerOperation } from "@donghanh/core";
 function ListItems({ data }) {
   return (
     <Brief>
-      You have {data.items.length} items.
+      {`You have ${data.items.length} items.`}
       <Display data={data.items} />
       <Action operation="add-item" label="Add an item" />
     </Brief>
@@ -45,7 +45,7 @@ The `<Brief>` is the agent's HUD — not shown to users. The framework renders i
 
 | Target | Adapter | `<Message>` | `<Action>` | `<Display>` |
 |--------|---------|------------|-----------|------------|
-| **ChatGPT GPT Store** | `gptRoutes` | `nextSteps` | `suggestedActions[]` | `display` field |
+| **ChatGPT GPT Store** (deprecated) | `gptRoutes` | `nextSteps` | `suggestedActions[]` | `display` field |
 | **ChatGPT Apps SDK (MCP)** | `mcpRoutes` + `@donghanh/widget` | `content[]` text | `structuredContent.actions` → iframe buttons | `structuredContent.display` → iframe |
 | **Self-hosted React chat** | `chatRoutes` + `@donghanh/react` | tool-result text | action metadata | formatted text |
 
@@ -54,7 +54,7 @@ The `<Brief>` is the agent's HUD — not shown to users. The framework renders i
 | Package | Description |
 |---------|-------------|
 | `@donghanh/core` | Custom JSX runtime, primitives, registry, executor |
-| `@donghanh/hono` | Hono routes: `gptRoutes` (GPT Store), `mcpRoutes` (Apps SDK), `chatRoutes` (LLM chat) |
+| `@donghanh/hono` | Hono routes: `gptRoutes` (GPT Store, deprecated), `mcpRoutes` (Apps SDK), `chatRoutes` (LLM chat) |
 | `@donghanh/react` | Headless React hooks for self-hosted chat (useChat, useInitOperation) |
 | `@donghanh/widget` | Iframe runtime for Apps SDK widgets — MCP bridge, hooks, renderers |
 | `@donghanh/widget-vite` | Vite plugin that bundles widgets into inline HTML + manifest for `mcpRoutes` |
@@ -93,6 +93,8 @@ your-app/
 **Operations are components** — each `.tsx` file receives `{ data, variables }` and returns a `<Brief>`. Metadata is attached via `registerOperation()`.
 
 ## Auth tiers (gptRoutes)
+
+> **Deprecated:** GPT Store support is deprecated. Use Apps SDK (`mcpRoutes`) for new projects. `gptRoutes` keeps working.
 
 Each operation declares an `auth` posture. `gptRoutes` enforces it per-op and exposes a dedicated `/public` sub-path for ops that don't require auth:
 

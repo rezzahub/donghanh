@@ -126,6 +126,8 @@ Role identity + purpose + use-tools rule + tone. Every other concern goes elsewh
 
 ## 3b. GPT Store Custom GPT instructions — longer, protocol-level
 
+> **Deprecated:** GPT Store support is deprecated. Use Apps SDK (`mcpRoutes`) for new projects. `gptRoutes` keeps working.
+
 Read by: a ChatGPT Custom GPT configured in the GPT Store UI.
 
 Different audience than 3a. The Custom GPT runs inside ChatGPT and has no native knowledge of your REST API. You paste instructions into the "Instructions" field of the GPT builder. Convention: keep this as `public/gpt-prompt.md` in your repo and paste it in.

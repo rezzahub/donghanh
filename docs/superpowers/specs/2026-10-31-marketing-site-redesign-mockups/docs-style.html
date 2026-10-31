@@ -1,0 +1,65 @@
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400;500&display=swap");
+.dd{--bg:#0e0f11;--fg:#f3f3f4;--text:#c9ccd2;--mute:#8a8e96;--dim:#5d6168;--line:#1f2125;--card:#131416;--raised:#1b1d21;--accent:#4fd1a0;background:var(--bg);color:var(--text);font-family:Geist,system-ui,sans-serif;border-radius:10px;overflow:hidden;line-height:1.65;font-size:15px;text-align:left}
+.dd *{box-sizing:border-box}
+.dd .top{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);font-size:13px;color:var(--mute)}
+.dd .top b{color:var(--fg);font-size:15px;font-weight:600}
+.dd .top span{margin-left:20px}
+.dd .search{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 12px;color:var(--dim);width:220px;font-size:13px;display:flex;justify-content:space-between}
+.dd .pill{background:var(--fg);color:#111;padding:6px 13px;border-radius:99px}
+.dd .wrap{display:grid;grid-template-columns:210px minmax(0,1fr) 170px}
+.dd .side{padding:22px 16px 22px 24px;border-right:1px solid var(--line);font-size:13.5px}
+.dd .side h6{margin:16px 0 6px;font-size:12px;font-weight:500;color:var(--dim);letter-spacing:0;text-transform:none}
+.dd .side h6:first-child{margin-top:0}
+.dd .side a{display:block;padding:4px 10px;border-radius:7px;color:var(--mute)}
+.dd .side a.on{background:var(--raised);color:var(--fg)}
+.dd .body{padding:28px 44px 36px}
+.dd .crumb{font-size:12.5px;color:var(--dim);margin-bottom:8px}
+.dd h1{font-size:38px;line-height:1.1;letter-spacing:-.03em;font-weight:560;color:var(--fg);margin:0 0 10px;border:0;padding:0}
+.dd .lead{font-size:17px;color:var(--mute);margin:0 0 26px!important}
+.dd h2{font-size:23px;letter-spacing:-.02em;font-weight:560;color:var(--fg);margin:28px 0 8px;border:0;padding:0}
+.dd h3{font-size:16px;font-weight:560;color:var(--fg);margin:22px 0 6px}
+.dd p{margin:0 0 12px!important;color:var(--text)}
+.dd code.i{font:12.5px "JetBrains Mono",monospace;background:var(--raised);color:var(--fg);padding:2px 6px;border-radius:5px}
+.dd .code{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:10px 0 16px}
+.dd .code .bar{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
+.dd pre{margin:0;padding:12px 14px;font:12.5px/1.6 "JetBrains Mono",monospace;color:#d6d8dd;background:none;border:0}
+.dd pre em{font-style:normal;color:var(--accent)}
+.dd pre q{quotes:none;color:#e8b46a}
+.dd .note{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--mute)}
+.dd .note b{color:var(--fg);font-weight:500}
+.dd .toc{padding:28px 18px;font-size:12.5px;color:var(--dim);border-left:1px solid var(--line)}
+.dd .toc div{padding:3px 0}
+.dd .toc .on{color:var(--fg)}
+</style>
+
+<h2>Docs in the same style as homepage A</h2>
+<p class="subtitle">Your real "Brief &amp; Primitives" page. Same colours and type as the homepage, but calmer: smaller headings, and body text a little brighter so long pages stay easy to read. Still dark only, like today.</p>
+
+<div class="dd">
+  <div class="top"><b>donghanh</b><div class="search"><span>Search docs</span><span>⌘K</span></div><div><span>Concepts</span><span>Reference</span><span>GitHub</span><span class="pill">Get started</span></div></div>
+  <div class="wrap">
+    <div class="side">
+      <h6>Getting Started</h6><a>Introduction</a><a>Quick Start</a>
+      <h6>Concepts</h6><a class="on">Brief &amp; Primitives</a><a>Operations</a><a>Executor</a><a>Renderers</a>
+      <h6>API Reference</h6><a>cli</a><a>core</a><a>hono</a><a>react</a><a>widget</a>
+    </div>
+    <div class="body">
+      <div class="crumb">Concepts</div>
+      <h1>Brief &amp; Primitives</h1>
+      <p class="lead">The JSX primitives that make up the agent's HUD.</p>
+      <p>Every operation returns a <code class="i">&lt;Brief&gt;</code>, a JSX tree that serves as the agent's heads-up display. The framework renders it differently per target.</p>
+      <h2>Primitives</h2>
+      <h3>&lt;Action&gt;</h3>
+      <p>A suggested next operation, a tool hint for the agent.</p>
+      <div class="code"><div class="bar"><span>tsx</span><span>Copy</span></div>
+<pre>&lt;<em>Action</em>
+  operation=<q>"record-settlement"</q>
+  label=<q>"Settle debt"</q>
+  variables={{ groupId: <q>"abc"</q>, amount: 50000 }}
+/&gt;</pre></div>
+      <div class="note"><b>Note</b> &nbsp;This box shows how callouts would look. The wording is placeholder.</div>
+    </div>
+    <div class="toc"><div style="color:var(--mute);margin-bottom:6px">On this page</div><div class="on">Primitives</div><div>&lt;Brief&gt;</div><div>&lt;Action&gt;</div><div>&lt;Display&gt;</div><div>How rendering works</div></div>
+  </div>
+</div>

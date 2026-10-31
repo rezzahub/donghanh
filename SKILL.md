@@ -18,7 +18,7 @@ Run `bunx create-donghanh my-app` or scaffold manually:
 2. Each operation uses `/** @jsxImportSource @donghanh/core */` and returns `<Brief>`
 3. Register operations in `operations/index.ts` using `as const`
 4. Create an executor that maps operation IDs to data fetching
-5. Mount with `gptRoutes()` from `@donghanh/hono`
+5. Mount with `mcpRoutes()` from `@donghanh/hono`
 
 ### Creating an operation
 

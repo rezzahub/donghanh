@@ -9,7 +9,7 @@ type Template = (typeof TEMPLATES)[number];
 const DESCRIPTIONS: Record<Template, string> = {
   minimal: "Hello world with D1 SQLite — 2 operations",
   "kanban-gpt":
-    "Kanban board with Better Auth + Drizzle + GPT Store OAuth — 6 operations",
+    "Kanban board with Better Auth + Drizzle + GPT Store OAuth (deprecated) — 6 operations",
 };
 
 async function prompt(question: string): Promise<string> {

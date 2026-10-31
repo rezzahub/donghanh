@@ -65,31 +65,47 @@ interface OperationComponentAny {
 
 // --- Helpers ---
 
-function flatChildren(children: Child | Child[]): (ChatNode | string)[] {
+function flatChildren(children: Child | Child[]): (ChatNode | Text)[] {
   if (children == null || typeof children === "boolean") return [];
   if (Array.isArray(children))
     return (children.flat(Infinity) as unknown[]).filter(
-      (c): c is ChatNode | string => c != null && typeof c !== "boolean",
+      (c): c is ChatNode | Text => c != null && typeof c !== "boolean",
     );
   return [children];
 }
 
-function toNode(child: ChatNode | string): ChatNode {
-  if (typeof child === "string") return { type: "message", content: child };
-  return child;
+function isText(child: ChatNode | Text): child is Text {
+  return typeof child === "string" || typeof child === "number";
+}
+
+/** Adjacent text becomes one message, so `{n} items` reads as a sentence. */
+function toNodes(children: (ChatNode | Text)[]): ChatNode[] {
+  const nodes: ChatNode[] = [];
+  let text: string | null = null;
+  for (const child of children) {
+    if (isText(child)) {
+      text = (text ?? "") + child;
+      continue;
+    }
+    if (text !== null) nodes.push({ type: "message", content: text });
+    text = null;
+    nodes.push(child);
+  }
+  if (text !== null) nodes.push({ type: "message", content: text });
+  return nodes;
 }
 
 // --- Component functions ---
 
-type Child = ChatNode | ChatNode[] | string | boolean | undefined | null;
+type Text = string | number;
+type Child = ChatNode | ChatNode[] | Text | boolean | undefined | null;
 
 export function Brief(props: { children?: Child | Child[] }): BriefNode {
-  const flat = flatChildren(props.children);
-  return { type: "brief", children: flat.map(toNode) };
+  return { type: "brief", children: toNodes(flatChildren(props.children)) };
 }
 
-export function Message(props: { children?: string }): MessageNode {
-  return { type: "message", content: props.children ?? "" };
+export function Message(props: { children?: Text | Text[] }): MessageNode {
+  return { type: "message", content: [props.children ?? ""].flat().join("") };
 }
 
 export function Action(props: {

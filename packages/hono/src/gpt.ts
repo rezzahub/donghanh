@@ -42,6 +42,7 @@ function jsonError(message: string, status = 400): Response {
   });
 }
 
+/** @deprecated GPT Store support is deprecated. Use mcpRoutes (Apps SDK) for new projects. */
 export function gptRoutes(config: GptRoutesConfig): Hono {
   const {
     registry,
