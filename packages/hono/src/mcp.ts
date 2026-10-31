@@ -153,16 +153,27 @@ function annotationsFor(detail: OperationDetail | null): {
 
 /**
  * Model-visible text for a tool result: the brief's messages, then the next-step
- * actions as a `Next:` list (`- label (operation id)`). Falls back to "OK".
+ * actions as a `Next:` list (`- label (operation id)`, or `run_*` for catalog operations). Falls back to "OK".
  */
-function toolText(rendered: ChatGptResult, actionsInText: boolean): string {
+function toolText(
+  rendered: ChatGptResult,
+  actionsInText: boolean,
+  runTool: (operationId: string) => string | undefined = () => undefined,
+): string {
   const blocks: string[] = [];
   if (rendered.nextSteps) blocks.push(rendered.nextSteps);
   if (actionsInText && rendered.suggestedActions.length > 0) {
     blocks.push(
       [
         "Next:",
-        ...rendered.suggestedActions.map((a) => `- ${a.description} (${a.id})`),
+        ...rendered.suggestedActions.map((a) => {
+          const vars = a.variables ? JSON.stringify(a.variables) : undefined;
+          const run = runTool(a.id);
+          if (run) {
+            return `- ${a.description} (${run} id="${a.id}"${vars ? ` variables=${vars}` : ""})`;
+          }
+          return `- ${a.description} (${a.id}${vars ? ` ${vars}` : ""})`;
+        }),
       ].join("\n"),
     );
   }
@@ -305,7 +316,21 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
 
       return {
         body: {
-          content: [{ type: "text", text: toolText(rendered, actionsInText) }],
+          content: [
+            {
+              type: "text",
+              text: toolText(rendered, actionsInText, (opId) => {
+                if (
+                  resolved.placement.get(opId) !== "catalog" ||
+                  resolved.appOnly.has(opId)
+                ) {
+                  return undefined;
+                }
+                const d = registry.detail(opId);
+                return d ? runToolFor(d) : undefined;
+              }),
+            },
+          ],
           structuredContent: structured,
           ...(Object.keys(meta).length > 0 && { _meta: meta }),
         },
@@ -473,6 +498,9 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     } catch {
       return c.json(failure(null, -32700, "Parse error"), 400);
     }
+    if (body === null || typeof body !== "object" || Array.isArray(body)) {
+      return c.json(failure(null, -32600, "Invalid Request"), 400);
+    }
 
     const id = body.id ?? null;
     const method = body.method;
@@ -560,7 +588,8 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
 
           const meta: Record<string, unknown> = { ...detail?.meta };
           if (widget) {
-            meta.ui = { resourceUri: widget.uri };
+            const ui = (meta.ui ?? {}) as Record<string, unknown>;
+            meta.ui = { ...ui, resourceUri: widget.uri };
             meta["openai/outputTemplate"] = widget.uri;
           }
           if (resolved.pinned.has(op.id)) meta["anthropic/alwaysLoad"] = true;

@@ -721,3 +721,97 @@ describe("invalid method", () => {
     expect(((await res.json()) as any).error.code).toBe(-32600);
   });
 });
+
+describe("Next block formats", () => {
+  const nextText = async (exposure?: any) => {
+    const list = makeOp("list", {}, () =>
+      Brief({
+        children: [
+          Message({ children: "Done." }),
+          Action({ operation: "q", label: "Read", variables: { a: 1 } }),
+          Action({ operation: "m2", label: "Write" }),
+          Action({ operation: "d2", label: "Drop", variables: { id: "x" } }),
+          Action({ operation: "p", label: "Tool", variables: { b: "c" } }),
+        ],
+      }),
+    );
+    const registry = makeApp({
+      list,
+      p: makeOp("p"),
+      q: makeOp("q"),
+      m2: makeOp("m2", { type: "mutation" }),
+      d2: makeOp("d2", { type: "mutation", destructive: true }),
+    });
+    const app = mcpRoutes({ ...baseConfig, registry, exposure });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    return result.content[0].text as string;
+  };
+
+  test("listed tools carry compact variables inside the parentheses", async () => {
+    const text = await nextText();
+    expect(text).toContain('- Read (q {"a":1})');
+    expect(text).toContain("- Write (m2)");
+    expect(text).toContain('- Tool (p {"b":"c"})');
+  });
+
+  test("catalog-placed operations name their run_* tool", async () => {
+    const text = await nextText({ default: "catalog", pin: ["p", "list"] });
+    expect(text).toContain('- Read (run_read id="q" variables={"a":1})');
+    expect(text).toContain('- Write (run_write id="m2")');
+    expect(text).toContain(
+      '- Drop (run_destructive id="d2" variables={"id":"x"})',
+    );
+    expect(text).toContain('- Tool (p {"b":"c"})');
+  });
+});
+
+describe("request body shape", () => {
+  const post = async (body: unknown) => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({ q: makeOp("q") }),
+    });
+    const res = await app.request("/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, json: (await res.json()) as any };
+  };
+
+  for (const [name, body] of [
+    ["null", null],
+    ["an array", [{ jsonrpc: "2.0", id: 1, method: "ping" }]],
+    ["a number", 5],
+    ["a string", "x"],
+  ] as const) {
+    test(`${name} is -32600 Invalid Request with HTTP 400`, async () => {
+      const r = await post(body);
+      expect(r.status).toBe(400);
+      expect(r.json.error.code).toBe(-32600);
+    });
+  }
+});
+
+describe("widget meta merge", () => {
+  test("tools/list keeps an existing meta.ui next to the widget uri", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({
+        ui: makeOp("ui", {
+          widget: "boards",
+          meta: { ui: { visibility: ["app"], resourceUri: "ui://old" } },
+        }),
+      }),
+      widgets: { boards: { uri: "ui://w/b.html", html: "<div/>" } },
+    });
+    const { result } = await rpc(app, "tools/list");
+    expect(result.tools[0]._meta.ui).toEqual({
+      visibility: ["app"],
+      resourceUri: "ui://w/b.html",
+    });
+  });
+});

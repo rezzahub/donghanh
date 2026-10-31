@@ -191,6 +191,7 @@ type Authenticate = (request: Request) => Promise<{ userId: string } | { error: 
 - `metadata?: boolean` — mount `/.well-known/oauth-protected-resource`. Default `true`. Set `false` when several endpoints share one origin and you serve the metadata once.
 - `instructionsSuffix?: string` — appended to `App.instructions` in `initialize.instructions` (only when the app has instructions; dropped when it has none). Use it to differ per endpoint.
 - `actionsInText?: boolean` — append the result's next-step actions to the tool text as a `Next:` list (`- label (operation id)`). Default `true`. `structuredContent.actions` is unaffected.
+  Action variables go inside the parentheses as compact JSON (`- label (id {"a":1})`). An operation only the catalog can run is written as the call to make: `- label (run_read id="<id>" variables={"a":1})`, with `run_write` or `run_destructive` by class.
 - `outputSchema?: (op, wrapped) => object | undefined` — final say on each tool's `outputSchema`. `wrapped` is the default schema (undefined when the operation has no response schema); the return value is used as is, and `undefined` omits it.
 - `exposure?: ExposureConfig` — which operations are tools and which only the catalog (below). Default: every operation is a tool.
 
@@ -240,6 +241,8 @@ Three behaviors changed in 0.4:
 - **Protocol negotiation.** `initialize` answers the client's `protocolVersion` when it is supported, otherwise the newest. `SUPPORTED_PROTOCOL_VERSIONS` is `2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05`. Before 0.4 it always answered `2026-01-26`.
 - **200 for JSON-RPC errors.** Unknown methods, tools and resources, and catalog mutations, now answer HTTP 200 with a JSON-RPC `error` body (`-32601`), not 404. Malformed requests (parse error, invalid request, missing `uri` or tool name) still answer 400.
 - **202 for notifications.** Every `notifications/*` method answers 202 with no body, not only `initialized` and `cancelled`.
+
+JSON-RPC batches (a JSON array body) are rejected with `-32600`, including on `2025-03-26`; a body that is not a JSON object answers `-32600` with HTTP 400.
 
 `ping`, `resources/templates/list` and `prompts/list` are answered, so strict clients can finish tool discovery.
 
