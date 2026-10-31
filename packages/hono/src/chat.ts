@@ -29,6 +29,18 @@ export interface ChatRoutesConfig {
   baseUrl?: string;
 }
 
+/** Explicit `systemPrompt` > the app's `instructions` > a generic default. */
+export function resolveSystemPrompt(
+  config: { systemPrompt?: string },
+  registry: Registry,
+): string {
+  return (
+    config.systemPrompt ??
+    registry.instructions() ??
+    "You are a helpful assistant. Use the tools to help the user."
+  );
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -119,9 +131,7 @@ export function chatRoutes(config: ChatRoutesConfig): Hono {
     });
 
     const model = config.model ?? "google/gemini-2.5-flash";
-    const systemPrompt =
-      config.systemPrompt ??
-      "You are a helpful assistant. Use the tools to help the user.";
+    const systemPrompt = resolveSystemPrompt(config, registry);
 
     // Init operation context
     let initContext = "";

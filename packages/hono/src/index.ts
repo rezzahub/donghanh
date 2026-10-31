@@ -1,5 +1,5 @@
 export type { ChatMessage, ChatRoutesConfig } from "./chat";
-export { chatRoutes } from "./chat";
+export { chatRoutes, resolveSystemPrompt } from "./chat";
 export type {
   ExposureConfig,
   Placement,
