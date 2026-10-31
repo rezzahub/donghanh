@@ -27,19 +27,18 @@ bun run db:init
 bun run dev
 ```
 
-Open `http://localhost:8787/api/operations` to see your operations.
+Your operations are now available as MCP tools at `http://localhost:8787/mcp`.
 
 ## Try it
 
 ```bash
 # List operations
-curl localhost:8787/api/operations
-
-# Get operation detail
-curl localhost:8787/api/operations/list-items
+curl -X POST localhost:8787/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # Execute a query
-curl localhost:8787/api/query/list-items
+curl -X POST localhost:8787/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list-items","arguments":{}}}'
 ```
 
 ## What's inside

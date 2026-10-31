@@ -13,8 +13,10 @@ bun run dev
 ## Try it
 
 ```bash
-curl localhost:8787/api/operations
-curl localhost:8787/api/query/list-items
+curl -X POST localhost:8787/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+curl -X POST localhost:8787/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list-items","arguments":{}}}'
 ```
 
 ## Deploy
