@@ -94,7 +94,7 @@ Moves the Leganox Worker patch upstream (`leganox-idea/worker/mcp/protocol.ts` a
 
 ### 5. Next-step hints
 
-`<Action operation label variables>` already renders into `structuredContent.actions` for widgets. Also append a compact "Next:" block to the model-visible text (`content[0].text`): one line per action, `label (operation_id)`. **(controller call)** Opt-out per endpoint with `actionsInText: false`, because an app that mirrors a JSON envelope in text (Leganox) may prefer to fold actions into its own envelope.
+`<Action operation label variables>` already renders into `structuredContent.actions` for widgets. Also append a compact "Next:" block to the model-visible text (`content[0].text`): one line per action. A listed tool: `- label (id)`, or `- label (id {compact JSON variables})` when the action has variables. A catalog-placed operation (not callable by name): `- label (run_read|run_write|run_destructive id="<id>")`, plus ` variables=<compact JSON>` when it has variables, the tool chosen by the operation's class, so the model can copy the call. **(controller call)** Opt-out per endpoint with `actionsInText: false`, because an app that mirrors a JSON envelope in text (Leganox) may prefer to fold actions into its own envelope.
 
 ### 6. Exposure per endpoint (owner's decision: hybrid available, configured at the endpoint)
 
@@ -150,11 +150,12 @@ interface SkillProvider {
   key: string;
   search(query: string, ctx: SkillContext): Promise<SkillSummary[]>;
   get(slug: string, ctx: SkillContext): Promise<Skill | null>;
+  canCreate?(ctx: SkillContext): boolean | Promise<boolean>; // default true when `create` exists
   create?(input: { title: string; markdown: string }, ctx: SkillContext): Promise<Skill>;
   update?(id: string, input: { title: string; markdown: string }, ctx: SkillContext): Promise<Skill>;
   delete?(id: string, ctx: SkillContext): Promise<void>;
 }
-type SkillContext = { userId: string | null; request: Request };
+type SkillContext = { userId: string | null; request: Request; intent?: string };
 
 function skillOperations(opts: { providers: SkillProvider[]; prefix?: string }): {
   operations: Record<string, OperationComponent>;
@@ -165,9 +166,9 @@ function staticSkills(key: string, files: Record<string, string>): SkillProvider
 
 **How skill operations run (controller call).** donghanh executes everything through the app's single `Executor`, so the helper returns `wrap(executor)`. The app chooses where it sits: Leganox puts its own gates (argument size cap, rate limits, envelope) **outside** the wrapped executor, `appGates(skills.wrap(appExecutor))`, so skill reads and writes pass the same gates as every operation. Generated operations use a plain `<Brief>` with one `<Message>`, `responseKey: "skill"` / `"skills"`, so `gptRoutes` and `chatRoutes` get skills too.
 
-**Provider keys and write routing (controller call).** Every provider has a `key: string` (unique; startup error otherwise). Skill ids are namespaced `"<key>:<provider id>"` everywhere they leave the helper, so ids never collide and update/delete route by prefix. `SkillSummary.writableBy` names the provider key that can change it, if the caller may. `manage_skill` `create` takes an optional `target` (a writable provider key); without it, the first writable provider in the list is used. Search results list which keys are writable for the caller, so the model can name a target when the user says "save this for the team" vs "just for me".
+**Provider keys and write routing (controller call).** Every provider has a `key: string` (unique; startup error otherwise). Skill ids are namespaced `"<key>:<provider id>"` everywhere they leave the helper, so ids never collide and update/delete route by prefix. `SkillSummary.writableBy` names the provider key that can change it, if the caller may. `manage_skill` `create` takes an optional `target` (a writable provider key); without it, the first writable provider in the list is used. A provider's optional `canCreate(ctx)` decides per caller whether it is a create target (a throwing `canCreate` counts as false and is logged); `writableTargets` lists only usable keys and `create` with any other target is an error. Search results list which keys are writable for the caller, so the model can name a target when the user says "save this for the team" vs "just for me".
 
-- Generates ordinary operations, so endpoint exposure applies unchanged: `search_skills` (query `{ query, limit ≤ 10 }`), `use_skill` (query `{ slug }`, returns the Markdown with the instruction "keep it in context and follow it as guidance while using the normal tools"), and, **only if some provider implements a write method**, `manage_skill` (mutation, `{ create | update }`, exactly one, not destructive) and `delete_skill` (mutation, `{ id }`, destructive). Composio puts delete inside its manage tool; donghanh splits it **(controller call)** because hints are per tool, and one tool that can delete must be marked destructive for every call.
+- Generates ordinary operations, so endpoint exposure applies unchanged: `search_skills` (query `{ query, limit ≤ 10 }`), `use_skill` (query `{ slug, provider? }`; `provider` asks only that provider, and search results show each skill's provider, returns the Markdown with the instruction "keep it in context and follow it as guidance while using the normal tools"), and, **only if some provider implements a write method**, `manage_skill` (mutation, `{ create | update }`, exactly one, not destructive) and `delete_skill` (mutation, `{ id }`, destructive). Composio puts delete inside its manage tool; donghanh splits it **(controller call)** because hints are per tool, and one tool that can delete must be marked destructive for every call.
 - Dynamic: providers are queried per request with the caller's context; what a caller sees and may change is the provider's decision (visibility and write permission per user or workspace are app concerns). New or edited skills appear on the next search; no tool-list change.
 - Merge across providers: results concatenated in provider order, de-duplicated by slug, **first provider wins** **(controller call)**, so curated read-only skills listed first can't be shadowed.
 - `SKILL.md` format: YAML frontmatter `name`, `description`, then Markdown (≤ 64 KB). Extra files pass through untouched in `files`.

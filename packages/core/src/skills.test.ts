@@ -279,8 +279,12 @@ describe("skillOperations", () => {
       expect(r.skills.map((x) => x.id)).toEqual(["a:x"]);
       const u = (await run(s, "use_skill", { slug: "x" })) as Skill;
       expect(u.id).toBe("a:x");
-      expect(spy).toHaveBeenCalledWith("[skills] provider bad search failed");
-      expect(spy).toHaveBeenCalledWith("[skills] provider bad get failed");
+      expect(spy).toHaveBeenCalledWith(
+        "[skills] provider bad search failed (Error)",
+      );
+      expect(spy).toHaveBeenCalledWith(
+        "[skills] provider bad get failed (Error)",
+      );
       const logged = JSON.stringify(spy.mock.calls);
       expect(logged).not.toContain("SECRETQUERY");
       expect(logged).not.toContain("secret detail");
@@ -409,5 +413,188 @@ describe("skillOperations", () => {
       ).toThrow(/single line/);
     }
     expect(parseSkillMarkdown(md("a")).description).toBe("a desc");
+  });
+});
+
+describe("frontmatter keys", () => {
+  test("indented lines under other keys are not top-level keys", () => {
+    const parsed = parseSkillMarkdown(
+      "---\nname: real\nmetadata:\n  name: other\n  description: nope\ndescription: Real desc\n---\nB",
+    );
+    expect(parsed.name).toBe("real");
+    expect(parsed.description).toBe("Real desc");
+  });
+
+  test("a multi-line plain description throws the single line error", () => {
+    expect(() =>
+      parseSkillMarkdown(
+        "---\nname: a\ndescription: First line\n  second line\n---\nB",
+      ),
+    ).toThrow(/single line/);
+    expect(() =>
+      parseSkillMarkdown("---\nname: a\n  more\ndescription: d\n---\nB"),
+    ).toThrow(/single line/);
+  });
+});
+
+describe("staticSkills search", () => {
+  test("splits on whitespace and matches any token, case-insensitively, in slug too", async () => {
+    const p = staticSkills("a", {
+      x: md("pr-review", "Checks a pull request"),
+      y: md("deploy", "Ships it"),
+      z: md("other", "Unrelated"),
+    });
+    const names = async (q: string) =>
+      (await p.search(q, ctx)).map((s) => s.name).sort();
+    expect(await names("review pull request")).toEqual(["pr-review"]);
+    expect(await names("SHIPS   Request")).toEqual(["deploy", "pr-review"]);
+    expect(await names("   ")).toEqual(["deploy", "other", "pr-review"]);
+    expect(await names("zzz")).toEqual([]);
+  });
+});
+
+describe("provider selection", () => {
+  const two = () =>
+    skillOperations({
+      providers: [
+        staticSkills("a", { x: md("deploy", "From A", "A body") }),
+        staticSkills("b", { x: md("deploy", "From B", "B body") }),
+      ],
+    });
+
+  test("search shows the provider; use_skill honours provider", async () => {
+    const s = two();
+    const r = (await run(s, "search_skills", { query: "deploy" })) as {
+      skills: (SkillSummary & { provider?: string })[];
+    };
+    expect(r.skills[0].id).toBe("a:deploy");
+    expect(r.skills[0].provider).toBe("a");
+    const node = JSON.stringify(
+      s.operations.search_skills({ data: r, variables: {} }),
+    );
+    expect(node).toContain("provider a");
+    expect(((await run(s, "use_skill", { slug: "deploy" })) as Skill).id).toBe(
+      "a:deploy",
+    );
+    const b = (await run(s, "use_skill", {
+      slug: "deploy",
+      provider: "b",
+    })) as Skill;
+    expect(b.id).toBe("b:deploy");
+    expect(b.markdown).toContain("B body");
+    expect(s.operations.use_skill.operationConfig.instruction).toMatch(
+      /provider/,
+    );
+  });
+
+  test("an unknown provider names the valid keys", async () => {
+    await expect(
+      run(two(), "use_skill", { slug: "deploy", provider: "zz" }),
+    ).rejects.toThrow(/a, b/);
+  });
+});
+
+describe("canCreate", () => {
+  test("filters writableTargets and guards create", async () => {
+    const m1 = { ...memoryProvider("m1"), canCreate: () => false };
+    const m2 = memoryProvider("m2");
+    const m3 = { ...memoryProvider("m3"), canCreate: async () => true };
+    const s = skillOperations({ providers: [m1, m2, m3] });
+    const search = (await run(s, "search_skills", { query: "" })) as {
+      writableTargets: string[];
+    };
+    expect(search.writableTargets).toEqual(["m2", "m3"]);
+    await expect(
+      run(s, "manage_skill", {
+        create: { title: "T", markdown: md("a"), target: "m1" },
+      }),
+    ).rejects.toThrow(/m1/);
+    const made = (await run(s, "manage_skill", {
+      create: { title: "T", markdown: md("a") },
+    })) as Skill;
+    expect(made.id.startsWith("m2:")).toBe(true);
+  });
+
+  test("a throwing canCreate counts as false and is logged", async () => {
+    const spy = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const bad = {
+        ...memoryProvider("bad"),
+        canCreate: () => {
+          throw new TypeError("secret");
+        },
+      };
+      const s = skillOperations({ providers: [bad, memoryProvider("ok")] });
+      const r = (await run(s, "search_skills", { query: "" })) as {
+        writableTargets: string[];
+      };
+      expect(r.writableTargets).toEqual(["ok"]);
+      expect(spy).toHaveBeenCalledWith(
+        "[skills] provider bad canCreate failed (TypeError)",
+      );
+      expect(JSON.stringify(spy.mock.calls)).not.toContain("secret");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("outages", () => {
+  const down = (key: string): SkillProvider => ({
+    key,
+    async search() {
+      throw new Error("boom");
+    },
+    async get() {
+      throw new Error("boom");
+    },
+  });
+
+  test("all-failed or nothing-found-with-failure throws unavailable; partial results return", async () => {
+    const spy = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const empty = skillOperations({
+        providers: [down("d1"), readOnly("a", ["x"])],
+      });
+      await expect(
+        run(empty, "search_skills", { query: "nomatch" }),
+      ).rejects.toThrow("Skill providers are unavailable (d1); try again.");
+      await expect(run(empty, "use_skill", { slug: "nope" })).rejects.toThrow(
+        "Skill providers are unavailable (d1); try again.",
+      );
+      const ok = (await run(empty, "search_skills", { query: "x" })) as {
+        skills: unknown[];
+      };
+      expect(ok.skills).toHaveLength(1);
+      const none = skillOperations({ providers: [readOnly("a", ["x"])] });
+      await expect(run(none, "use_skill", { slug: "nope" })).rejects.toThrow(
+        /No skill with slug/,
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("intent", () => {
+  test("wrap passes the caller's intent to providers", async () => {
+    let seen: string | undefined;
+    const p: SkillProvider = {
+      key: "i",
+      async search(_q, c) {
+        seen = c.intent;
+        return [];
+      },
+      async get() {
+        return null;
+      },
+    };
+    const s = skillOperations({ providers: [p] });
+    await s.wrap(async () => "app")(
+      "search_skills",
+      { query: "" },
+      { ...ctx, intent: "find a skill" },
+    );
+    expect(seen).toBe("find a skill");
   });
 });

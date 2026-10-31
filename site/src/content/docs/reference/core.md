@@ -108,7 +108,7 @@ import type { SkillProvider } from "@donghanh/core/skills";
 Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `description`, then a body) that the agent searches and loads on demand. They are dynamic, so `instructions` and tool descriptions never list them; the app's `instructions` tells the agent to search first.
 
 ### `SkillProvider`
-`{ key, search(query, ctx), get(slug, ctx), create?, update?, delete? }`. `key` uses letters, digits, `_` or `-` and must be unique. A provider with `create`, `update` or `delete` is writable. `ctx` is `{ userId, request }`; `userId` is `null` for an unauthenticated caller, except through `gptRoutes`, where an anonymous caller arrives as the string `"anonymous"`, not `null`.
+`{ key, search(query, ctx), get(slug, ctx), create?, update?, delete? }`. `key` uses letters, digits, `_` or `-` and must be unique. A provider with `create`, `update` or `delete` is writable. `canCreate?(ctx)` (default true when `create` exists) decides per caller whether the provider is a create target; a throwing `canCreate` counts as false. `ctx` is `{ userId, request, intent? }`; `userId` is `null` for an unauthenticated caller, except through `gptRoutes`, where an anonymous caller arrives as the string `"anonymous"`, not `null`.
 
 ### `staticSkills(key, files)`
 Read-only provider over `SKILL.md` strings. The slug is the frontmatter `name` (lowercase letters, digits, single hyphens).
@@ -119,8 +119,8 @@ Returns `{ operations, wrap(executor) }`. `prefix` is prepended to the operation
 | Operation | Type | Purpose |
 |---|---|---|
 | `search_skills` | query | Search by keyword across providers; lists `writableTargets` |
-| `use_skill` | query | Load a skill's Markdown by slug |
+| `use_skill` | query | Load a skill's Markdown by slug; optional `provider` asks only that provider |
 | `manage_skill` | mutation | Create or update a skill (exactly one of `create`, `update`); Markdown up to 65,536 characters |
 | `delete_skill` | mutation, destructive | Delete a skill by id |
 
-Ids returned to the agent are `<provider key>:<id>`. A failing provider is skipped on search and get; the error is logged without its details.
+Ids returned to the agent are `<provider key>:<id>`. A failing provider is skipped on search and get; the log carries only the error's name. If a provider failed and nothing was found, the call throws `Skill providers are unavailable (<keys>); try again.` instead of reporting no match.

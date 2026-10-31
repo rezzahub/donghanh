@@ -21,12 +21,16 @@ export interface SkillContext {
   /** Null when the caller is unauthenticated. Through gptRoutes an anonymous caller arrives as the string "anonymous", not null. */
   userId: string | null;
   request: Request;
+  /** The caller's stated reason for the call, when the host passes one. */
+  intent?: string;
 }
 
 export interface SkillProvider {
   key: string;
   search(query: string, ctx: SkillContext): Promise<SkillSummary[]>;
   get(slug: string, ctx: SkillContext): Promise<Skill | null>;
+  /** Whether this caller may create here. Defaults to true when `create` exists. */
+  canCreate?(ctx: SkillContext): boolean | Promise<boolean>;
   create?(
     input: { title: string; markdown: string },
     ctx: SkillContext,
@@ -67,16 +71,28 @@ export function parseSkillMarkdown(md: string): {
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(md);
   if (!m) throw new Error("SKILL.md must start with a --- frontmatter block");
   const fields: Record<string, string> = {};
+  const continued = new Set<string>();
+  let last = "";
   for (const line of m[1].split(/\r?\n/)) {
+    if (/^\s/.test(line)) {
+      if (line.trim() && (last === "name" || last === "description")) {
+        continued.add(last);
+      }
+      continue;
+    }
     const i = line.indexOf(":");
-    if (i < 1) continue;
-    fields[line.slice(0, i).trim()] = line
+    if (i < 1) {
+      last = "";
+      continue;
+    }
+    last = line.slice(0, i).trim();
+    fields[last] = line
       .slice(i + 1)
       .trim()
       .replace(/^(["'])(.*)\1$/, "$2");
   }
   for (const key of ["name", "description"]) {
-    if (/^[>|][+-]?\d*$/.test(fields[key] ?? "")) {
+    if (continued.has(key) || /^[>|][+-]?\d*$/.test(fields[key] ?? "")) {
       throw new Error(
         `SKILL.md frontmatter ${key} must be a single line; folded and literal YAML (">-", "|") is not supported`,
       );
@@ -119,15 +135,14 @@ export function staticSkills(
   return {
     key,
     async search(query) {
-      const q = query.trim().toLowerCase();
+      const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
       const all = await Promise.all(skills.values());
       return all
-        .filter(
-          (s) =>
-            !q ||
-            s.name.toLowerCase().includes(q) ||
-            s.description.toLowerCase().includes(q),
-        )
+        .filter((s) => {
+          if (!tokens.length) return true;
+          const hay = `${s.slug} ${s.name} ${s.description}`.toLowerCase();
+          return tokens.some((t) => hay.includes(t));
+        })
         .map(summarize);
     },
     async get(slug) {
@@ -182,10 +197,32 @@ export function skillOperations(opts: {
   }
   const writable = providers.filter((p) => p.create || p.update || p.delete);
   const creators = providers.filter((p) => p.create);
+  const unavailable = (keys: string[]) =>
+    new Error(
+      `Skill providers are unavailable (${keys.join(", ")}); try again.`,
+    );
   const byKey = new Map(providers.map((p) => [p.key, p]));
 
-  const fail = (p: SkillProvider, method: string) =>
-    console.error(`[skills] provider ${p.key} ${method} failed`);
+  const fail = (p: SkillProvider, method: string, e: unknown) =>
+    console.error(
+      `[skills] provider ${p.key} ${method} failed (${e instanceof Error ? e.name : "Error"})`,
+    );
+
+  /** Creators this caller may use; a throwing canCreate counts as false. */
+  async function creatorsFor(ctx: SkillContext): Promise<SkillProvider[]> {
+    const ok = await Promise.all(
+      creators.map(async (p) => {
+        if (!p.canCreate) return true;
+        try {
+          return await p.canCreate(ctx);
+        } catch (e) {
+          fail(p, "canCreate", e);
+          return false;
+        }
+      }),
+    );
+    return creators.filter((_, i) => ok[i]);
+  }
 
   const ns = <T extends SkillSummary>(p: SkillProvider, s: T): T => ({
     ...s,
@@ -241,40 +278,59 @@ export function skillOperations(opts: {
       const raw =
         typeof vars.limit === "number" ? Math.floor(vars.limit) : DEFAULT_LIMIT;
       const limit = Math.min(MAX_LIMIT, Math.max(1, raw));
+      const failed: string[] = [];
       const lists = await Promise.all(
         providers.map(async (p) => {
           try {
-            return (await p.search(query, ctx)).map((s) => ns(p, s));
-          } catch {
-            fail(p, "search");
+            return (await p.search(query, ctx)).map((s) => ({
+              ...ns(p, s),
+              provider: p.key,
+            }));
+          } catch (e) {
+            fail(p, "search", e);
+            failed.push(p.key);
             return [];
           }
         }),
       );
       const slugs = new Set<string>();
-      const skills: SkillSummary[] = [];
+      const skills: (SkillSummary & { provider: string })[] = [];
       for (const s of lists.flat()) {
         if (slugs.has(s.slug)) continue;
         slugs.add(s.slug);
         skills.push(s);
       }
+      if (failed.length && !skills.length) throw unavailable(failed);
       return {
         skills: skills.slice(0, limit),
-        writableTargets: creators.map((p) => p.key),
+        writableTargets: (await creatorsFor(ctx)).map((p) => p.key),
       };
     },
     async use_skill(vars, ctx) {
       const slug = vars.slug;
       if (typeof slug !== "string" || !slug)
         throw new Error("slug is required");
-      for (const p of providers) {
+      let asked = providers;
+      if (vars.provider != null) {
+        const only = byKey.get(String(vars.provider));
+        if (!only) {
+          throw new Error(
+            `Unknown provider "${String(vars.provider)}"; providers: ${providers.map((p) => p.key).join(", ")}`,
+          );
+        }
+        asked = [only];
+      }
+      const failed: string[] = [];
+      for (const p of asked) {
         try {
           const s = await p.get(slug, ctx);
           if (s) return ns(p, s);
-        } catch {
-          fail(p, "get");
+        } catch (e) {
+          fail(p, "get", e);
+          failed.push(p.key);
         }
       }
+      if (failed.length) throw unavailable(failed);
       throw new Error(
         `No skill with slug "${slug}"; call ${prefix}search_skills first`,
       );
@@ -287,16 +343,17 @@ export function skillOperations(opts: {
       if (create != null) {
         const input = checkInput(create, "create");
         const target = (create as { target?: unknown }).target;
+        const usable = await creatorsFor(ctx);
         let provider: SkillProvider | undefined;
         if (target != null) {
-          provider = creators.find((p) => p.key === target);
+          provider = usable.find((p) => p.key === target);
           if (!provider) {
             throw new Error(
-              `Unknown target "${String(target)}"; writable targets: ${creators.map((p) => p.key).join(", ") || "none"}`,
+              `Unknown target "${String(target)}"; writable targets: ${usable.map((p) => p.key).join(", ") || "none"}`,
             );
           }
         } else {
-          provider = creators[0];
+          provider = usable[0];
           if (!provider)
             throw new Error("No writable provider can create skills");
         }
@@ -342,10 +399,13 @@ export function skillOperations(opts: {
   define(
     "search_skills",
     ({ data }) => {
-      const d = data as { skills: SkillSummary[]; writableTargets: string[] };
+      const d = data as {
+        skills: (SkillSummary & { provider?: string })[];
+        writableTargets: string[];
+      };
       const lines = d.skills.map(
         (s) =>
-          `- ${s.id}: ${s.name} - ${s.description}${s.writableBy ? ` [writable by ${s.writableBy}]` : ""}`,
+          `- ${s.id}: ${s.name} - ${s.description}${s.provider ? ` [provider ${s.provider}]` : ""}${s.writableBy ? ` [writable by ${s.writableBy}]` : ""}`,
       );
       if (!lines.length) lines.push("No skills found.");
       if (d.writableTargets.length) {
@@ -383,14 +443,17 @@ export function skillOperations(opts: {
     type: "query",
     title: "Use skill",
     description: "Load a skill's full SKILL.md by slug.",
-    instruction:
-      "Keep it in context and follow it as guidance while using the normal tools.",
+    instruction: `Keep it in context and follow it as guidance while using the normal tools. Pass provider when ${prefix}search_skills showed one, so the copy you saw is the one you load.`,
     input: {
       type: "object",
       properties: {
         slug: {
           type: "string",
           description: `Slug from ${prefix}search_skills`,
+        },
+        provider: {
+          type: "string",
+          description: `Provider key shown by ${prefix}search_skills`,
         },
       },
       required: ["slug"],
@@ -486,6 +549,7 @@ export function skillOperations(opts: {
           return handlers[name](variables, {
             userId: context.userId,
             request: context.request,
+            ...(context.intent !== undefined && { intent: context.intent }),
           });
         }
         return executor(operationId, variables, context);
