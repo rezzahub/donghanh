@@ -62,7 +62,7 @@ function unionSchemes(
   defaultScopes: string[],
 ): SecurityScheme[] {
   let noauth = false;
-  const scopes = new Set<string>();
+  const scopes = new Set<string>(defaultScopes);
   let oauth = false;
   for (const d of details) {
     for (const s of securitySchemesFor(d, defaultScopes)) {

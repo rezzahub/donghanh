@@ -140,6 +140,7 @@ describe("catalog meta-tools", () => {
     expect(schemes).toContainEqual({ type: "noauth" });
     const oauth = schemes.find((s: any) => s.type === "oauth2");
     expect(oauth.scopes).toContain("s");
+    expect(oauth.scopes).toContain("read");
     expect(schemes.filter((s: any) => s.type === "oauth2")).toHaveLength(1);
   });
 
