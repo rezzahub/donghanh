@@ -81,6 +81,7 @@ export default defineConfig({
         {
           label: "Resources",
           items: [
+            { label: "Changelog", link: "/changelog/" },
             {
               label: "AI coding skills",
               link: "https://github.com/rezzahub/donghanh/tree/main/skills",
