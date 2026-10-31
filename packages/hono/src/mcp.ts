@@ -2,9 +2,10 @@ import type { Executor, OperationDetail, Registry } from "@donghanh/core";
 import { executeOperation } from "@donghanh/core";
 import { Hono } from "hono";
 import type { Authenticate } from "./middleware";
+import { negotiateProtocolVersion } from "./protocol";
 import { renderForChatGpt } from "./renderers/chatgpt";
 
-const MCP_PROTOCOL_VERSION = "2026-01-26";
+const INSTRUCTIONS_WARN_LENGTH = 4096;
 const UI_MIME_TYPE = "text/html;profile=mcp-app";
 
 export interface WidgetConfig {
@@ -34,6 +35,12 @@ export interface McpRoutesConfig {
   scopes?: string[];
   resourceDocumentation?: string;
   serverInfo?: { name: string; version: string };
+  /** Endpoint path for the JSON-RPC handler (default "/mcp"). */
+  path?: string;
+  /** Mount `/.well-known/oauth-protected-resource` (default true). */
+  metadata?: boolean;
+  /** Appended to the app's instructions in `initialize` (only when the app has instructions). */
+  instructionsSuffix?: string;
   encodeVariables?: (vars: Record<string, unknown>) => string;
   /** Named widgets. Operation's `widget` config key must match a name here. */
   widgets?: Record<string, WidgetConfig>;
@@ -145,32 +152,51 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     scopes = [],
     resourceDocumentation,
     serverInfo = { name: "donghanh-mcp", version: "0.1.0" },
+    path = "/mcp",
+    metadata = true,
+    instructionsSuffix = "",
     encodeVariables,
     widgets = {},
     enrichResponse,
   } = config;
 
+  const appInstructions = registry.instructions();
+  const instructions =
+    appInstructions === undefined
+      ? undefined
+      : appInstructions + instructionsSuffix;
+  if (
+    instructions !== undefined &&
+    instructions.length > INSTRUCTIONS_WARN_LENGTH
+  ) {
+    console.warn(
+      `[donghanh] MCP instructions are ${instructions.length} characters; clients may truncate above ${INSTRUCTIONS_WARN_LENGTH}.`,
+    );
+  }
+
   const app = new Hono();
 
   // RFC 9728 protected resource metadata
-  app.get("/.well-known/oauth-protected-resource", (c) =>
-    c.json({
-      resource,
-      authorization_servers: authorizationServers,
-      ...(scopes.length > 0 && { scopes_supported: scopes }),
-      ...(resourceDocumentation && {
-        resource_documentation: resourceDocumentation,
+  if (metadata) {
+    app.get("/.well-known/oauth-protected-resource", (c) =>
+      c.json({
+        resource,
+        authorization_servers: authorizationServers,
+        ...(scopes.length > 0 && { scopes_supported: scopes }),
+        ...(resourceDocumentation && {
+          resource_documentation: resourceDocumentation,
+        }),
       }),
-    }),
-  );
+    );
+  }
 
   // Stateless server: no SSE stream to open
   app.get(
-    "/mcp",
+    path,
     () => new Response(null, { status: 405, headers: { Allow: "POST" } }),
   );
 
-  app.post("/mcp", async (c) => {
+  app.post(path, async (c) => {
     let body: JsonRpcRequest;
     try {
       body = await c.req.json();
@@ -185,22 +211,34 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
       return c.json(failure(id, -32600, "Invalid Request"), 400);
     }
 
+    if (method.startsWith("notifications/")) {
+      return new Response(null, { status: 202 });
+    }
+
     switch (method) {
       case "initialize":
         return c.json(
           success(id, {
-            protocolVersion: MCP_PROTOCOL_VERSION,
+            protocolVersion: negotiateProtocolVersion(
+              body.params?.protocolVersion,
+            ),
             capabilities: {
               tools: {},
               ...(Object.keys(widgets).length > 0 && { resources: {} }),
             },
             serverInfo,
+            ...(instructions !== undefined && { instructions }),
           }),
         );
 
-      case "notifications/initialized":
-      case "notifications/cancelled":
-        return new Response(null, { status: 204 });
+      case "ping":
+        return c.json(success(id, {}));
+
+      case "resources/templates/list":
+        return c.json(success(id, { resourceTemplates: [] }));
+
+      case "prompts/list":
+        return c.json(success(id, { prompts: [] }));
 
       case "tools/list": {
         const tools = registry.list().map((op) => {
@@ -247,7 +285,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
         if (!uri) return c.json(failure(id, -32602, "Missing uri"), 400);
         const widget = Object.values(widgets).find((w) => w.uri === uri);
         if (!widget) {
-          return c.json(failure(id, -32601, `Unknown resource "${uri}"`), 404);
+          return c.json(failure(id, -32601, `Unknown resource "${uri}"`));
         }
         return c.json(
           success(id, {
@@ -275,7 +313,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
 
         const op = registry.get(toolName);
         if (!op) {
-          return c.json(failure(id, -32601, `Unknown tool "${toolName}"`), 404);
+          return c.json(failure(id, -32601, `Unknown tool "${toolName}"`));
         }
 
         const detail = registry.detail(toolName);
@@ -374,7 +412,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
       }
 
       default:
-        return c.json(failure(id, -32601, `Method not found: ${method}`), 404);
+        return c.json(failure(id, -32601, `Method not found: ${method}`));
     }
   });
 

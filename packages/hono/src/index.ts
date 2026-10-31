@@ -12,6 +12,10 @@ export type {
   OpenApiServer,
 } from "./openapi";
 export { generateOpenApi } from "./openapi";
+export {
+  negotiateProtocolVersion,
+  SUPPORTED_PROTOCOL_VERSIONS,
+} from "./protocol";
 export type { ChatGptResult, SuggestedAction } from "./renderers/chatgpt";
 export { renderForChatGpt } from "./renderers/chatgpt";
 export type { LlmAction, LlmResult } from "./renderers/llm";

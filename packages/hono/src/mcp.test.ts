@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import type {
   ChatNode,
   Executor,
@@ -58,7 +58,7 @@ describe("mcpRoutes", () => {
   test("initialize returns protocol version + capabilities", async () => {
     const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
     const { result } = await rpc(app, "initialize");
-    expect(result.protocolVersion).toBe("2026-01-26");
+    expect(result.protocolVersion).toBe("2025-11-25");
     expect(result.capabilities.tools).toEqual({});
   });
 
@@ -309,5 +309,141 @@ describe("mcpRoutes", () => {
     expect(body.resource).toBe("https://app.example.com");
     expect(body.authorization_servers).toEqual(["https://auth.example.com"]);
     expect(body.scopes_supported).toEqual(["read", "write"]);
+  });
+
+  test("initialize echoes each supported version", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    for (const v of ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]) {
+      const { result } = await rpc(app, "initialize", { protocolVersion: v });
+      expect(result.protocolVersion).toBe(v);
+    }
+  });
+
+  test("initialize answers unknown or missing versions with the newest", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    expect(
+      (await rpc(app, "initialize", { protocolVersion: "2099-01-01" })).result
+        .protocolVersion,
+    ).toBe("2025-11-25");
+    expect((await rpc(app, "initialize")).result.protocolVersion).toBe(
+      "2025-11-25",
+    );
+  });
+
+  test("initialize carries app instructions plus the endpoint suffix", async () => {
+    const reg = buildRegistry(App({ operations: {}, instructions: "Play." }));
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: reg,
+      instructionsSuffix: " Use find_operations.",
+    });
+    expect((await rpc(app, "initialize")).result.instructions).toBe(
+      "Play. Use find_operations.",
+    );
+  });
+
+  test("no instructions key when the app has none", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({}),
+      instructionsSuffix: " Suffix.",
+    });
+    const { result } = await rpc(app, "initialize");
+    expect("instructions" in result).toBe(false);
+  });
+
+  test("warns once at startup above 4096 characters", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const reg = buildRegistry(
+        App({ operations: {}, instructions: "x".repeat(4097) }),
+      );
+      const app = mcpRoutes({ ...baseConfig, registry: reg });
+      await rpc(app, "initialize");
+      await rpc(app, "initialize");
+      expect(warn).toHaveBeenCalledTimes(1);
+      warn.mockClear();
+      mcpRoutes({
+        ...baseConfig,
+        registry: buildRegistry(
+          App({ operations: {}, instructions: "x".repeat(4096) }),
+        ),
+      });
+      expect(warn).toHaveBeenCalledTimes(0);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  test("ping answers an empty result", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    expect(await rpc(app, "ping")).toEqual<unknown>({
+      jsonrpc: "2.0",
+      id: 1,
+      result: {},
+    });
+  });
+
+  test("templates and prompts list empty", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    expect(
+      (await rpc(app, "resources/templates/list")).result.resourceTemplates,
+    ).toEqual([]);
+    expect((await rpc(app, "prompts/list")).result.prompts).toEqual([]);
+  });
+
+  test("any notification is 202 with an empty body", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    for (const method of [
+      "notifications/initialized",
+      "notifications/roots/list_changed",
+    ]) {
+      const res = await app.request("/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method }),
+      });
+      expect(res.status).toBe(202);
+      expect(await res.text()).toBe("");
+    }
+  });
+
+  test("unknown method, tool and resource are -32601 with HTTP 200", async () => {
+    const app = mcpRoutes({ ...baseConfig, registry: makeApp({}) });
+    const calls: Array<[string, Record<string, unknown>?]> = [
+      ["nope/method"],
+      ["tools/call", { name: "nope" }],
+      ["resources/read", { uri: "ui://nope" }],
+    ];
+    for (const [method, params] of calls) {
+      const res = await app.request("/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as any).error.code).toBe(-32601);
+    }
+  });
+
+  test("path mounts the endpoint elsewhere; metadata:false skips the metadata route", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({}),
+      path: "/agent",
+      metadata: false,
+    });
+    const post = (p: string) =>
+      app.request(p, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+      });
+    expect((await post("/agent")).status).toBe(200);
+    expect((await post("/mcp")).status).toBe(404);
+    expect((await app.request("/agent")).status).toBe(405);
+    expect(
+      (await app.request("/.well-known/oauth-protected-resource")).status,
+    ).toBe(404);
   });
 });
