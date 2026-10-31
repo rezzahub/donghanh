@@ -1,0 +1,25 @@
+{
+  "name": "donghanh",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#131416",
+    "editor.foreground": "#d6d8dd"
+  },
+  "tokenColors": [
+    {
+      "settings": { "foreground": "#d6d8dd" }
+    },
+    {
+      "scope": ["comment", "punctuation.definition.comment"],
+      "settings": { "foreground": "#5d6168" }
+    },
+    {
+      "scope": ["entity.name.tag", "support.class.component"],
+      "settings": { "foreground": "#4fd1a0" }
+    },
+    {
+      "scope": ["string", "punctuation.definition.string"],
+      "settings": { "foreground": "#e8b46a" }
+    }
+  ]
+}

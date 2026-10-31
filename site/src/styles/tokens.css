@@ -1,0 +1,18 @@
+/* Shared design tokens for the homepage and docs */
+
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --bg: #0e0f11;
+  --fg: #f3f3f4;
+  --text: #c9ccd2;
+  --mute: #8a8e96;
+  --dim: #5d6168;
+  --line: #1f2125;
+  --card: #131416;
+  --raised: #1b1d21;
+  --accent: #4fd1a0;
+
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}

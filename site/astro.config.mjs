@@ -2,6 +2,7 @@
 import cloudflare from "@astrojs/cloudflare";
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
+import codeTheme from "./src/styles/code-theme.json" with { type: "json" };
 
 export default defineConfig({
   site: "https://donghanh.dev",
@@ -9,7 +10,7 @@ export default defineConfig({
   adapter: cloudflare({ imageService: "compile" }),
   integrations: [
     starlight({
-      title: "@donghanh",
+      title: "donghanh",
       social: [
         {
           icon: "github",
@@ -17,7 +18,27 @@ export default defineConfig({
           href: "https://github.com/rezzahub/donghanh",
         },
       ],
-      customCss: ["./src/styles/terminal.css"],
+      customCss: ["./src/styles/docs.css"],
+      components: {
+        PageTitle: "./src/components/starlight/PageTitle.astro",
+        SocialIcons: "./src/components/starlight/SocialIcons.astro",
+        ThemeSelect: "./src/components/starlight/EmptyThemeSelect.astro",
+      },
+      expressiveCode: {
+        themes: [codeTheme],
+        styleOverrides: {
+          borderColor: "#1f2125",
+          borderRadius: "10px",
+          codeBackground: "#131416",
+          codeFontFamily: "var(--font-mono)",
+          frames: {
+            editorTabBarBackground: "#131416",
+            terminalTitlebarBackground: "#131416",
+            terminalBackground: "#131416",
+            frameBoxShadowCssValue: "none",
+          },
+        },
+      },
       sidebar: [
         {
           label: "Getting Started",
