@@ -32,6 +32,9 @@ Root container. Accepts `children` of type `Child | Child[]`.
 
 ### `App(props)`
 - `operations: Record<string, OperationComponent>` — typed operations map
+- `instructions?: string` — the app's playbook (Markdown). `mcpRoutes` sends it as `initialize.instructions`, `gptRoutes` returns it from `GET /operations`, and `chatRoutes` uses it as the default system prompt. `registry.instructions()` reads it.
+
+Writing rule: put the essentials (what the app is, what to call first, the one or two rules that matter most) in the first 512 characters; ChatGPT and Codex read that far. Keep the total under 4,096 characters; Claude Code truncates there, and `mcpRoutes` warns at startup above it.
 
 ## Registration
 
@@ -50,6 +53,13 @@ Attaches metadata to a component function. Returns an `OperationComponent`.
 - `instruction: string`
 - `input: object` — JSON Schema
 - `responseKey: string`
+- `title?: string` — human-readable title for tool listings
+- `idempotent?: boolean` — repeating the call has no further effect (`idempotentHint`)
+- `tags?: string[]` — grouping tags; searchable and usable in `exposure` selectors
+- `meta?: Record<string, unknown>` — extra protocol metadata passed through to tool listings
+- `appCallable?: boolean` — the app's widget may call this operation directly; a catalog operation with it is listed with visibility `["app"]`
+
+`ExecutorContext.intent` carries the caller-stated reason when the call came through `run_write` or `run_destructive`.
 
 ## Registry
 
@@ -87,3 +97,30 @@ import type { Renderer } from "@donghanh/core";
 
 ### `renderNode(node, renderer)`
 Walks a `ChatNode` tree, calling renderer methods for each node type.
+
+## Skills
+
+```ts
+import { skillOperations, staticSkills } from "@donghanh/core/skills";
+import type { SkillProvider } from "@donghanh/core/skills";
+```
+
+Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `description`, then a body) that the agent searches and loads on demand. They are dynamic, so `instructions` and tool descriptions never list them; the app's `instructions` tells the agent to search first.
+
+### `SkillProvider`
+`{ key, search(query, ctx), get(slug, ctx), create?, update?, delete? }`. `key` uses letters, digits, `_` or `-` and must be unique. A provider with `create`, `update` or `delete` is writable.
+
+### `staticSkills(key, files)`
+Read-only provider over `SKILL.md` strings. The slug is the frontmatter `name` (lowercase letters, digits, single hyphens).
+
+### `skillOperations({ providers, prefix?, auth? })`
+Returns `{ operations, wrap(executor) }`. `prefix` is prepended to the operation ids below. Spread `operations` into `App`, and wrap your executor with `wrap`.
+
+| Operation | Type | Purpose |
+|---|---|---|
+| `search_skills` | query | Search by keyword across providers; lists `writableTargets` |
+| `use_skill` | query | Load a skill's Markdown by slug |
+| `manage_skill` | mutation | Create or update a skill (exactly one of `create`, `update`); Markdown up to 65,536 characters |
+| `delete_skill` | mutation, destructive | Delete a skill by id |
+
+Ids returned to the agent are `<provider key>:<id>`. A failing provider is skipped on search and get; the error is logged without its details.
