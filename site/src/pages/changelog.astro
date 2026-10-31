@@ -1,0 +1,18 @@
+---
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
+import { Content, getHeadings } from "../../../CHANGELOG.md";
+
+// The first heading is the file's own title, which the page already shows.
+const headings = getHeadings().filter((heading) => heading.depth > 1);
+---
+
+<StarlightPage
+  frontmatter={{
+    title: "Changelog",
+    description: "What changed in each donghanh release.",
+    tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 2 },
+  }}
+  headings={headings}
+>
+  <Content />
+</StarlightPage>

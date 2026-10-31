@@ -154,6 +154,22 @@ header .social-icons::after {
   display: none;
 }
 
+header .top-links {
+  flex-wrap: nowrap;
+}
+
+/* These are in the sidebar too, so they go first when the bar runs out of room. */
+@media (max-width: 72rem) {
+  header .top-links-wide {
+    display: none;
+  }
+}
+
+/* CHANGELOG.md has its own title, which the page already shows. */
+.sl-markdown-content > h1:first-child {
+  display: none;
+}
+
 .top-links {
   align-items: center;
   display: flex;
