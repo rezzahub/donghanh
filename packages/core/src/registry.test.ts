@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { App, Brief, Message } from "./primitives";
 import { buildRegistry } from "./registry";
 import type { OperationComponent, OperationConfig } from "./types";

@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { act, render } from "@testing-library/react";
+import { describe, expect, test } from "vitest";
 import { useToolResult } from "./hooks";
 
 function deliver(data: unknown) {
