@@ -1,6 +1,13 @@
 import type { Executor, OperationDetail, Registry } from "@donghanh/core";
 import { executeOperation } from "@donghanh/core";
 import { Hono } from "hono";
+import {
+  catalogTools,
+  isMetaTool,
+  RUN_CLASS,
+  runToolFor,
+  securitySchemesFor,
+} from "./catalog";
 import type { ExposureConfig } from "./exposure";
 import { resolveExposure } from "./exposure";
 import type { Authenticate } from "./middleware";
@@ -121,18 +128,6 @@ function wwwAuthenticate(
   return `Bearer resource_metadata="${resource}/.well-known/oauth-protected-resource", error="${error}", error_description="${description}"`;
 }
 
-function securitySchemesFor(
-  detail: OperationDetail | null,
-  defaultScopes: string[],
-): Array<{ type: "noauth" } | { type: "oauth2"; scopes: string[] }> {
-  const auth = detail?.auth ?? "required";
-  const scopes = detail?.scopes ?? defaultScopes;
-  if (auth === "none") return [{ type: "noauth" }];
-  if (auth === "optional")
-    return [{ type: "noauth" }, { type: "oauth2", scopes }];
-  return [{ type: "oauth2", scopes }];
-}
-
 function annotationsFor(detail: OperationDetail | null): {
   readOnlyHint: boolean;
   openWorldHint: boolean;
@@ -204,6 +199,220 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
   } = config;
 
   const resolved = resolveExposure(registry, exposure);
+  const metaTools = catalogTools(registry, resolved, scopes);
+  const metaNames = new Set(metaTools.map((t) => t.name));
+  for (const name of metaNames) {
+    if (registry.get(name)) {
+      throw new Error(
+        `Operation id "${name}" collides with the generated catalog meta-tool of the same name`,
+      );
+    }
+  }
+
+  const authFailure = () => {
+    const challenge = wwwAuthenticate(
+      resource,
+      "insufficient_scope",
+      "You need to login to continue",
+    );
+    return {
+      body: {
+        content: [{ type: "text", text: "Authentication required." }],
+        isError: true,
+        _meta: { "mcp/www_authenticate": [challenge] },
+      },
+      challenge,
+    };
+  };
+
+  const errorResult = (text: string) => ({
+    content: [{ type: "text", text }],
+    isError: true,
+  });
+
+  /** Execute one operation exactly as a direct tool call does. */
+  async function runOperation(
+    request: Request,
+    operationId: string,
+    variables: Record<string, unknown>,
+    intent?: string,
+  ): Promise<{ body: Record<string, unknown>; challenge?: string }> {
+    const op = registry.get(operationId);
+    if (!op) return { body: errorResult(`Unknown operation "${operationId}"`) };
+    const detail = registry.detail(operationId);
+    const authMode = detail?.auth ?? "required";
+
+    let userId: string | null = null;
+    if (authMode !== "none") {
+      const authResult = await authenticate(request);
+      if ("error" in authResult) {
+        if (authMode === "required") return authFailure();
+        // optional: proceed anonymously
+      } else {
+        userId = authResult.userId;
+      }
+    }
+
+    try {
+      const { data, brief } = await executeOperation({
+        registry,
+        operationId,
+        variables,
+        executor,
+        context: {
+          userId,
+          request,
+          ...(intent !== undefined && { intent }),
+        },
+      });
+
+      const rendered = renderForChatGpt(brief, {
+        encodeVariables,
+        getOperationInput: (opId) => registry.detail(opId)?.input,
+      });
+
+      const structured: Record<string, unknown> = {
+        [op.operationConfig.responseKey]: data,
+      };
+      if (rendered.suggestedActions.length > 0) {
+        structured.actions = rendered.suggestedActions;
+      }
+      if (rendered.display !== undefined) {
+        structured.display = rendered.display;
+      }
+
+      if (enrichResponse) {
+        await enrichResponse(structured, {
+          operationId,
+          data,
+          variables,
+          userId,
+          request,
+        });
+      }
+
+      const meta: Record<string, unknown> = {};
+      if (rendered.context && rendered.context.length > 0) {
+        meta["donghanh/context"] = rendered.context;
+      }
+
+      const widgetName = detail?.widget;
+      const widget = widgetName ? widgets[widgetName] : undefined;
+      if (widget) {
+        meta.ui = { resourceUri: widget.uri };
+        meta["openai/outputTemplate"] = widget.uri;
+      }
+
+      return {
+        body: {
+          content: [{ type: "text", text: toolText(rendered, actionsInText) }],
+          structuredContent: structured,
+          ...(Object.keys(meta).length > 0 && { _meta: meta }),
+        },
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Internal error";
+      return { body: errorResult(message) };
+    }
+  }
+
+  const catalogIdSet = new Set(resolved.catalogIds());
+
+  /** Resolve a meta-tool's target id to a catalog operation, or an error message. */
+  function catalogTarget(id: unknown): { detail: OperationDetail } | string {
+    if (typeof id !== "string" || !registry.get(id)) {
+      return `Unknown operation "${String(id)}". Call find_operations to list available operations.`;
+    }
+    if (!catalogIdSet.has(id)) {
+      return `"${id}" is a tool on this endpoint; call it directly.`;
+    }
+    const detail = registry.detail(id);
+    if (!detail)
+      return `Unknown operation "${id}". Call find_operations to list available operations.`;
+    return { detail };
+  }
+
+  const metaResult = (value: unknown) => ({
+    content: [{ type: "text", text: JSON.stringify(value) }],
+    structuredContent: value,
+  });
+
+  async function callMetaTool(
+    name: string,
+    args: Record<string, unknown>,
+    request: Request,
+  ): Promise<{ body: Record<string, unknown>; challenge?: string }> {
+    if (name === "find_operations") {
+      const authResult = await authenticate(request);
+      const anonymous = "error" in authResult;
+      const q =
+        typeof args.query === "string" ? args.query.trim().toLowerCase() : "";
+      const tags = Array.isArray(args.tags)
+        ? args.tags.map((t) => String(t).toLowerCase())
+        : [];
+      const operations = registry
+        .list()
+        .filter((o) => catalogIdSet.has(o.id))
+        .filter((o) => !anonymous || (o.auth ?? "required") !== "required")
+        .filter((o) => {
+          const own = (o.tags ?? []).map((t) => t.toLowerCase());
+          if (tags.length > 0 && !tags.some((t) => own.includes(t)))
+            return false;
+          if (!q) return true;
+          return [o.id, o.title ?? "", o.description, ...own].some((f) =>
+            f.toLowerCase().includes(q),
+          );
+        })
+        .map((o) => ({
+          id: o.id,
+          ...(o.title !== undefined && { title: o.title }),
+          description: o.description,
+          type: o.type,
+          ...(o.destructive !== undefined && { destructive: o.destructive }),
+          ...(o.tags !== undefined && { tags: o.tags }),
+        }));
+      return {
+        body: metaResult({
+          operations,
+          hint: "Call get_operation with an id before running it.",
+        }),
+      };
+    }
+
+    const target = catalogTarget(args.id);
+    if (typeof target === "string") return { body: errorResult(target) };
+    const { detail } = target;
+
+    if (name === "get_operation") {
+      const operations = registry.list().filter((o) => catalogIdSet.has(o.id));
+      return { body: metaResult({ ...detail, operations }) };
+    }
+
+    const expected = runToolFor(detail);
+    if (name !== expected) {
+      return {
+        body: errorResult(
+          `"${detail.id}" is a ${RUN_CLASS[expected]}; use ${expected}.`,
+        ),
+      };
+    }
+    let intent: string | undefined;
+    if (name !== "run_read") {
+      intent = typeof args.intent === "string" ? args.intent.trim() : "";
+      if (intent === "") {
+        return {
+          body: errorResult(
+            "intent is required: one sentence saying what this call does for the user.",
+          ),
+        };
+      }
+    }
+    const variables =
+      args.variables && typeof args.variables === "object"
+        ? (args.variables as Record<string, unknown>)
+        : {};
+    return runOperation(request, detail.id, variables, intent);
+  }
 
   const appInstructions = registry.instructions();
   const instructions =
@@ -347,7 +556,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
 
           return tool;
         });
-        return c.json(success(id, { tools }));
+        return c.json(success(id, { tools: [...tools, ...metaTools] }));
       }
 
       case "resources/list": {
@@ -390,6 +599,20 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
           return c.json(failure(id, -32602, "Missing tool name"), 400);
         }
 
+        if (isMetaTool(toolName) && metaNames.has(toolName)) {
+          const out = await callMetaTool(
+            toolName,
+            params.arguments ?? {},
+            c.req.raw,
+          );
+          return c.json(
+            success(id, out.body),
+            out.challenge
+              ? { headers: { "WWW-Authenticate": out.challenge } }
+              : undefined,
+          );
+        }
+
         const op = registry.get(toolName);
         if (!op) {
           return c.json(failure(id, -32601, `Unknown tool "${toolName}"`));
@@ -410,100 +633,18 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
             ),
           );
         }
-        const authMode = detail?.auth ?? "required";
 
-        let userId: string | null = null;
-        if (authMode !== "none") {
-          const authResult = await authenticate(c.req.raw);
-          if ("error" in authResult) {
-            if (authMode === "required") {
-              const challenge = wwwAuthenticate(
-                resource,
-                "insufficient_scope",
-                "You need to login to continue",
-              );
-              return c.json(
-                success(id, {
-                  content: [{ type: "text", text: "Authentication required." }],
-                  isError: true,
-                  _meta: { "mcp/www_authenticate": [challenge] },
-                }),
-                {
-                  headers: { "WWW-Authenticate": challenge },
-                },
-              );
-            }
-            // optional: proceed anonymously
-          } else {
-            userId = authResult.userId;
-          }
-        }
-
-        const variables = params.arguments ?? {};
-        try {
-          const { data, brief } = await executeOperation({
-            registry,
-            operationId: toolName,
-            variables,
-            executor,
-            context: { userId, request: c.req.raw },
-          });
-
-          const rendered = renderForChatGpt(brief, {
-            encodeVariables,
-            getOperationInput: (opId) => registry.detail(opId)?.input,
-          });
-
-          const structured: Record<string, unknown> = {
-            [op.operationConfig.responseKey]: data,
-          };
-          if (rendered.suggestedActions.length > 0) {
-            structured.actions = rendered.suggestedActions;
-          }
-          if (rendered.display !== undefined) {
-            structured.display = rendered.display;
-          }
-
-          if (enrichResponse) {
-            await enrichResponse(structured, {
-              operationId: toolName,
-              data,
-              variables,
-              userId,
-              request: c.req.raw,
-            });
-          }
-
-          const meta: Record<string, unknown> = {};
-          if (rendered.context && rendered.context.length > 0) {
-            meta["donghanh/context"] = rendered.context;
-          }
-
-          const widgetName = detail?.widget;
-          const widget = widgetName ? widgets[widgetName] : undefined;
-          if (widget) {
-            meta.ui = { resourceUri: widget.uri };
-            meta["openai/outputTemplate"] = widget.uri;
-          }
-
-          return c.json(
-            success(id, {
-              content: [
-                { type: "text", text: toolText(rendered, actionsInText) },
-              ],
-              structuredContent: structured,
-              ...(Object.keys(meta).length > 0 && { _meta: meta }),
-            }),
-          );
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Internal error";
-          return c.json(
-            success(id, {
-              content: [{ type: "text", text: message }],
-              isError: true,
-            }),
-          );
-        }
+        const out = await runOperation(
+          c.req.raw,
+          toolName,
+          params.arguments ?? {},
+        );
+        return c.json(
+          success(id, out.body),
+          out.challenge
+            ? { headers: { "WWW-Authenticate": out.challenge } }
+            : undefined,
+        );
       }
 
       default:
