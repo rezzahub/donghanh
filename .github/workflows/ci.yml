@@ -11,11 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: jdx/mise-action@v5
+      - id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
         with:
-          node-version: 22
-          cache: pnpm
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
       # The docs site isn't linted or tested here.
       - run: pnpm install --frozen-lockfile --filter '!./site'
       - run: pnpm run lint
@@ -28,7 +31,7 @@ jobs:
         template: [minimal, kanban-gpt]
     steps:
       - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: jdx/mise-action@v5
 
       # Scaffold from local template
       - name: Scaffold ${{ matrix.template }}
