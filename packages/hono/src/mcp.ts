@@ -3,6 +3,7 @@ import { executeOperation } from "@donghanh/core";
 import { Hono } from "hono";
 import type { Authenticate } from "./middleware";
 import { negotiateProtocolVersion } from "./protocol";
+import type { ChatGptResult } from "./renderers/chatgpt";
 import { renderForChatGpt } from "./renderers/chatgpt";
 
 const INSTRUCTIONS_WARN_LENGTH = 4096;
@@ -42,6 +43,11 @@ export interface McpRoutesConfig {
   /** Appended to the app's instructions in `initialize` (only when the app has instructions). */
   instructionsSuffix?: string;
   encodeVariables?: (vars: Record<string, unknown>) => string;
+  /**
+   * Append the result's next-step actions to the tool text as a `Next:` block
+   * (default true). `structuredContent.actions` is unaffected.
+   */
+  actionsInText?: boolean;
   /** Named widgets. Operation's `widget` config key must match a name here. */
   widgets?: Record<string, WidgetConfig>;
   /**
@@ -146,6 +152,24 @@ function annotationsFor(detail: OperationDetail | null): {
   };
 }
 
+/**
+ * Model-visible text for a tool result: the brief's messages, then the next-step
+ * actions as a `Next:` list (`- label (operation id)`). Falls back to "OK".
+ */
+function toolText(rendered: ChatGptResult, actionsInText: boolean): string {
+  const blocks: string[] = [];
+  if (rendered.nextSteps) blocks.push(rendered.nextSteps);
+  if (actionsInText && rendered.suggestedActions.length > 0) {
+    blocks.push(
+      [
+        "Next:",
+        ...rendered.suggestedActions.map((a) => `- ${a.description} (${a.id})`),
+      ].join("\n"),
+    );
+  }
+  return blocks.length > 0 ? blocks.join("\n\n") : "OK";
+}
+
 function widgetMetaFor(widget: WidgetConfig): Record<string, unknown> {
   const ui: Record<string, unknown> = {};
   if (widget.prefersBorder) ui.prefersBorder = true;
@@ -168,6 +192,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     metadata = true,
     instructionsSuffix = "",
     encodeVariables,
+    actionsInText = true,
     widgets = {},
     enrichResponse,
     outputSchema,
@@ -430,7 +455,9 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
 
           return c.json(
             success(id, {
-              content: [{ type: "text", text: rendered.nextSteps ?? "OK" }],
+              content: [
+                { type: "text", text: toolText(rendered, actionsInText) },
+              ],
               structuredContent: structured,
               ...(Object.keys(meta).length > 0 && { _meta: meta }),
             }),

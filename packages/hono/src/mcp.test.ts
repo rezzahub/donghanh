@@ -5,7 +5,14 @@ import type {
   OperationComponent,
   OperationConfig,
 } from "@donghanh/core";
-import { App, Brief, buildRegistry, Display, Message } from "@donghanh/core";
+import {
+  Action,
+  App,
+  Brief,
+  buildRegistry,
+  Display,
+  Message,
+} from "@donghanh/core";
 import { mcpRoutes } from "./mcp";
 
 function makeOp(
@@ -259,6 +266,87 @@ describe("mcpRoutes", () => {
     expect(result.content[0].text).toBe("hello!");
     expect(result.structuredContent.greet).toEqual({ msg: "hi" });
     expect(result.structuredContent.display).toEqual({ x: 1 });
+  });
+
+  test("actions are appended to the text as a Next block", async () => {
+    const list = makeOp("list", {}, () =>
+      Brief({
+        children: [
+          Message({ children: "3 items." }),
+          Action({ operation: "add_item", label: "Add an item" }),
+        ],
+      }),
+    );
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({ list, add_item: makeOp("add_item") }),
+    });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    expect(result.content[0].text).toBe(
+      "3 items.\n\nNext:\n- Add an item (add_item)",
+    );
+    expect(result.structuredContent.actions).toHaveLength(1);
+  });
+
+  test("actionsInText:false keeps the text unchanged", async () => {
+    const list = makeOp("list", {}, () =>
+      Brief({
+        children: [
+          Message({ children: "3 items." }),
+          Action({ operation: "add_item", label: "Add an item" }),
+        ],
+      }),
+    );
+    const app = mcpRoutes({
+      ...baseConfig,
+      actionsInText: false,
+      registry: makeApp({ list, add_item: makeOp("add_item") }),
+    });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    expect(result.content[0].text).toBe("3 items.");
+    expect(result.structuredContent.actions).toHaveLength(1);
+  });
+
+  test("no Next block when there are no actions", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({
+        list: makeOp("list", {}, () =>
+          Brief({ children: [Message({ children: "3 items." })] }),
+        ),
+      }),
+    });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    expect(result.content[0].text).toBe("3 items.");
+    expect(result.structuredContent.actions).toBeUndefined();
+  });
+
+  test("actions without a message give a bare Next block", async () => {
+    const app = mcpRoutes({
+      ...baseConfig,
+      registry: makeApp({
+        list: makeOp("list", {}, () =>
+          Brief({
+            children: [Action({ operation: "add_item", label: "Add an item" })],
+          }),
+        ),
+        add_item: makeOp("add_item"),
+      }),
+    });
+    const { result } = await rpc(app, "tools/call", {
+      name: "list",
+      arguments: {},
+    });
+    expect(result.content[0].text).toBe("Next:\n- Add an item (add_item)");
   });
 
   test("tools/call: enrichResponse can add fields to structuredContent", async () => {
