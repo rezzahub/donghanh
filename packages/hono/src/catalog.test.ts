@@ -485,8 +485,8 @@ describe("catalog meta-tools: final review fixes", () => {
     });
     const find = async (query: string) =>
       (
-        (await call(app, "find_operations", { query })).result
-          .structuredContent.operations as any[]
+        (await call(app, "find_operations", { query })).result.structuredContent
+          .operations as any[]
       ).map((o) => o.id);
     expect(await find("delete candidate")).toEqual(["del"]);
     expect(await find("  CANDIDATE   zzz ")).toEqual(["del"]);

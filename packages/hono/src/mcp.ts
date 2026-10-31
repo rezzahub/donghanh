@@ -365,8 +365,8 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
           if (tags.length > 0 && !tags.some((t) => own.includes(t)))
             return false;
           if (tokens.length === 0) return true;
-          const fields = [o.id, o.title ?? "", o.description, ...own].map(
-            (f) => f.toLowerCase(),
+          const fields = [o.id, o.title ?? "", o.description, ...own].map((f) =>
+            f.toLowerCase(),
           );
           return tokens.some((tok) => fields.some((f) => f.includes(tok)));
         })
@@ -423,10 +423,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
       }
     }
     const raw = args.variables;
-    if (
-      raw != null &&
-      (typeof raw !== "object" || Array.isArray(raw))
-    ) {
+    if (raw != null && (typeof raw !== "object" || Array.isArray(raw))) {
       return { body: errorResult("variables must be an object.") };
     }
     const variables = (raw ?? {}) as Record<string, unknown>;
