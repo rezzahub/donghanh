@@ -108,7 +108,7 @@ import type { SkillProvider } from "@donghanh/core/skills";
 Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `description`, then a body) that the agent searches and loads on demand. They are dynamic, so `instructions` and tool descriptions never list them; the app's `instructions` tells the agent to search first.
 
 ### `SkillProvider`
-`{ key, search(query, ctx), get(slug, ctx), create?, update?, delete? }`. `key` uses letters, digits, `_` or `-` and must be unique. A provider with `create`, `update` or `delete` is writable.
+`{ key, search(query, ctx), get(slug, ctx), create?, update?, delete? }`. `key` uses letters, digits, `_` or `-` and must be unique. A provider with `create`, `update` or `delete` is writable. `ctx` is `{ userId, request }`; `userId` is `null` for an unauthenticated caller, except through `gptRoutes`, where an anonymous caller arrives as the string `"anonymous"`, not `null`.
 
 ### `staticSkills(key, files)`
 Read-only provider over `SKILL.md` strings. The slug is the frontmatter `name` (lowercase letters, digits, single hyphens).

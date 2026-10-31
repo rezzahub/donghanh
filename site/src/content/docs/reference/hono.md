@@ -189,7 +189,7 @@ type Authenticate = (request: Request) => Promise<{ userId: string } | { error: 
 
 - `path?: string` — JSON-RPC endpoint path. Default `"/mcp"`.
 - `metadata?: boolean` — mount `/.well-known/oauth-protected-resource`. Default `true`. Set `false` when several endpoints share one origin and you serve the metadata once.
-- `instructionsSuffix?: string` — appended to `App.instructions` in `initialize.instructions` (only when the app has instructions). Use it to differ per endpoint.
+- `instructionsSuffix?: string` — appended to `App.instructions` in `initialize.instructions` (only when the app has instructions; dropped when it has none). Use it to differ per endpoint.
 - `actionsInText?: boolean` — append the result's next-step actions to the tool text as a `Next:` list (`- label (operation id)`). Default `true`. `structuredContent.actions` is unaffected.
 - `outputSchema?: (op, wrapped) => object | undefined` — final say on each tool's `outputSchema`. `wrapped` is the default schema (undefined when the operation has no response schema); the return value is used as is, and `undefined` omits it.
 - `exposure?: ExposureConfig` — which operations are tools and which only the catalog (below). Default: every operation is a tool.
@@ -238,7 +238,15 @@ An operation id equal to a meta-tool name throws at startup. Calling a catalog m
 Three behaviors changed in 0.4:
 
 - **Protocol negotiation.** `initialize` answers the client's `protocolVersion` when it is supported, otherwise the newest. `SUPPORTED_PROTOCOL_VERSIONS` is `2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05`. Before 0.4 it always answered `2026-01-26`.
-- **200 for JSON-RPC errors.** Unknown methods, tools and resources, and catalog-only tools, now answer HTTP 200 with a JSON-RPC `error` body (`-32601`), not 404. Malformed requests (parse error, invalid request, missing `uri` or tool name) still answer 400.
+- **200 for JSON-RPC errors.** Unknown methods, tools and resources, and catalog mutations, now answer HTTP 200 with a JSON-RPC `error` body (`-32601`), not 404. Malformed requests (parse error, invalid request, missing `uri` or tool name) still answer 400.
 - **202 for notifications.** Every `notifications/*` method answers 202 with no body, not only `initialized` and `cancelled`.
 
 `ping`, `resources/templates/list` and `prompts/list` are answered, so strict clients can finish tool discovery.
+
+## Upgrading to 0.4
+
+- The `Next:` block of suggested actions is now in the tool text by default. Pass `actionsInText: false` to opt out.
+- Distinct operations that share an id now throw at startup. The same component registered under two keys is still accepted.
+- `Registry` gained a required `instructions()` method. Add it to hand-built registries (it may return `undefined`).
+- JSON-RPC errors for unknown methods, tools and resources answer HTTP 200 (`-32601`), not 404.
+- Notifications answer 202 with no body, not 204.
