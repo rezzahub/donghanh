@@ -22,7 +22,7 @@ import { Action, Brief, Display, registerOperation } from "@donghanh/core";
 function ListItems({ data }) {
   return (
     <Brief>
-      You have {data.items.length} items.
+      {`You have ${data.items.length} items.`}
       <Display data={data.items} />
       <Action operation="add-item" label="Add an item" />
     </Brief>

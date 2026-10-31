@@ -35,7 +35,7 @@ import { Brief, Display, Action, registerOperation } from "@donghanh/core";
 function ListBoards({ data }: OperationProps<{ boards: Board[] }>) {
   return (
     <Brief>
-      You have {data.boards.length} boards.
+      {`You have ${data.boards.length} boards.`}
       <Display data={data.boards} />
       {data.boards.map(b => (
         <Action key={b.id} operation="board-detail" label={`View ${b.name}`} variables={{ boardId: b.id }} />

@@ -10,7 +10,7 @@ function BoardDetail({ data }: OperationProps<Data>) {
   const { board, columns, members } = data;
   return (
     <Brief>
-      Board: {board.name} ({members.length} members)
+      {`Board: ${board.name} (${members.length} members)`}
       <Display data={columns.map(col => ({
         column: col.name,
         cards: col.cards.map(c => c.title),

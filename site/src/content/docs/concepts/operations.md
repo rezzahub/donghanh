@@ -19,7 +19,7 @@ interface Data {
 function ListItems({ data, variables }: OperationProps<Data>) {
   return (
     <Brief>
-      You have {data.items.length} items.
+      {`You have ${data.items.length} items.`}
       <Display data={data.items} />
       <Action operation="add-item" label="Add an item" />
     </Brief>

@@ -271,6 +271,10 @@ h1 span,
   grid-template-columns: minmax(0, 1fr);
 }
 
+.skills {
+  margin-top: 1rem;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--line);

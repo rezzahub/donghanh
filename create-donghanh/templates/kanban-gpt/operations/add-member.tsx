@@ -7,7 +7,7 @@ interface Data { board: { id: string; name: string }; members: { id: string; nam
 function AddMember({ data }: OperationProps<Data>) {
   return (
     <Brief>
-      Member added to {data.board.name}. Now {data.members.length} member(s).
+      {`Member added to ${data.board.name}. Now ${data.members.length} member(s).`}
       <Display data={data.members.map(m => m.name)} />
       <Action operation="add-member" label="Add another member" variables={{ boardId: data.board.id }} />
       <Action operation="board-detail" label="View board" variables={{ boardId: data.board.id }} />

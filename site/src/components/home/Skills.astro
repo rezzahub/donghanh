@@ -5,14 +5,10 @@ const skills = [
   {
     name: "donghanh",
     text: "Core concepts, adapters, protocol rules and common pitfalls.",
-    command:
-      "npx degit rezzahub/donghanh/skills/donghanh ~/.claude/skills/donghanh",
   },
   {
     name: "donghanh-prompts",
     text: "Where to put steering text in your operations.",
-    command:
-      "npx degit rezzahub/donghanh/skills/donghanh-prompts ~/.claude/skills/donghanh-prompts",
   },
 ];
 ---
@@ -24,7 +20,8 @@ const skills = [
     Install the skills so Claude Code, Cursor or Copilot CLI can work in a
     donghanh codebase.
   </p>
-  <div class="stack">
+  <CopyCommand command="npx skills add rezzahub/donghanh" />
+  <div class="stack skills">
     {
       skills.map((skill) => (
         <article class="card">
@@ -32,7 +29,6 @@ const skills = [
             <code>{skill.name}</code>
           </h3>
           <p>{skill.text}</p>
-          <CopyCommand command={skill.command} />
         </article>
       ))
     }
