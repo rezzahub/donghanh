@@ -547,6 +547,13 @@ describe("mcpRoutes", () => {
       (await rpc(mcpRoutes({ ...baseConfig, ...config } as any), "tools/list"))
         .result.tools[0];
 
+    test("an operation with empty input still lists an object schema", async () => {
+      const tool = await list({
+        registry: makeApp({ op: makeOp("op", { input: {} }) }),
+      });
+      expect(tool.inputSchema.type).toBe("object");
+    });
+
     test("tools carry title, idempotentHint and operation meta", async () => {
       const op = makeOp("keep", {
         type: "mutation",

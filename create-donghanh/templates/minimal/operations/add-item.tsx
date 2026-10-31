@@ -30,4 +30,6 @@ export default registerOperation(AddItem, {
     },
   },
   responseKey: "addItem",
+  // This template has no sign-in. Remove this once you add real auth.
+  auth: "none",
 });

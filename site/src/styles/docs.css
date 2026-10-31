@@ -2,8 +2,7 @@
 
 @import "./tokens.css";
 
-:root,
-[data-theme="light"] {
+:root {
   --sl-font: var(--font-sans);
   --sl-font-mono: var(--font-mono);
 
@@ -158,6 +157,7 @@ header .social-icons::after {
 .top-links {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   font-size: 0.8125rem;
   gap: 1.25rem;
 }

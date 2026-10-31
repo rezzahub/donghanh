@@ -2,6 +2,7 @@
 import cloudflare from "@astrojs/cloudflare";
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
+import { fontsUrl } from "./src/fonts.mjs";
 import codeTheme from "./src/styles/code-theme.json" with { type: "json" };
 
 export default defineConfig({
@@ -19,9 +20,25 @@ export default defineConfig({
         },
       ],
       customCss: ["./src/styles/docs.css"],
+      head: [
+        {
+          tag: "link",
+          attrs: { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        },
+        {
+          tag: "link",
+          attrs: {
+            rel: "preconnect",
+            href: "https://fonts.gstatic.com",
+            crossorigin: true,
+          },
+        },
+        { tag: "link", attrs: { rel: "stylesheet", href: fontsUrl } },
+      ],
       components: {
         PageTitle: "./src/components/starlight/PageTitle.astro",
         SocialIcons: "./src/components/starlight/SocialIcons.astro",
+        ThemeProvider: "./src/components/starlight/DarkThemeProvider.astro",
         ThemeSelect: "./src/components/starlight/EmptyThemeSelect.astro",
       },
       expressiveCode: {

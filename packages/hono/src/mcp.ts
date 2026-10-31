@@ -556,10 +556,10 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
             description: detail?.instruction
               ? `${op.description}\n\n${detail.instruction}`
               : op.description,
-            inputSchema: detail?.input ?? {
-              type: "object",
-              properties: {},
-            },
+            inputSchema:
+              detail?.input && "type" in detail.input
+                ? detail.input
+                : { type: "object", properties: {}, ...detail?.input },
             annotations: annotationsFor(detail),
             securitySchemes: securitySchemesFor(detail, scopes),
           };

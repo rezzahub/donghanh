@@ -1,5 +1,6 @@
 ---
 import { Code } from "astro:components";
+import type { ComponentProps } from "astro/types";
 import codeTheme from "../../styles/code-theme.json";
 import CopyCommand from "./CopyCommand.astro";
 
@@ -29,7 +30,7 @@ const example = `function ListItems({ data }) {
   <div class="panels">
     <figure class="panel">
       <figcaption>list-items.tsx</figcaption>
-      <Code code={example} lang="tsx" theme={codeTheme as never} />
+      <Code code={example} lang="tsx" theme={codeTheme as ComponentProps<typeof Code>["theme"]} />
     </figure>
     <figure class="panel">
       <figcaption>In ChatGPT, with an Apps SDK widget</figcaption>

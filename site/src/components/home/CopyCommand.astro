@@ -7,7 +7,7 @@ const { command } = Astro.props;
 ---
 
 <div class="cmd">
-  <code><span class="cmd-prompt">$</span> {command}</code>
+  <code><span class="cmd-prompt">$</span> <span class="cmd-text">{command}</span></code>
   <button type="button" class="cmd-copy" data-command={command}>Copy</button>
 </div>
 

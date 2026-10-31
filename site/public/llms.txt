@@ -1,6 +1,6 @@
 # donghanh
 
-> Conversational UI framework. Build agent interfaces with JSX — operations declare what the agent sees with a `<Brief>` HUD, and a single operation tree renders to three targets: ChatGPT GPT Store, deprecated (gptRoutes + OpenAPI), ChatGPT Apps SDK (mcpRoutes + widget iframe), and self-hosted React chat (chatRoutes + @donghanh/react).
+> Conversational UI framework. Build agent interfaces with JSX — operations declare what the agent sees with a `<Brief>` HUD, and a single operation tree renders to three targets: ChatGPT GPT Store (deprecated; gptRoutes + OpenAPI), ChatGPT Apps SDK (mcpRoutes + widget iframe), and self-hosted React chat (chatRoutes + @donghanh/react).
 
 donghanh is a TypeScript/JSX framework for building AI agent apps on Cloudflare Workers (or any Hono-compatible runtime). An **operation** is a screen — it defines a query/mutation handler and a component that returns a Brief of `<Message>`, `<Display>`, `<Action>`, and `<Form>` primitives. The same operation registry powers three adapters so you ship one codebase and deploy to multiple surfaces.
 

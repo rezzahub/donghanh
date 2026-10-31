@@ -11,7 +11,7 @@
     },
     {
       "scope": ["comment", "punctuation.definition.comment"],
-      "settings": { "foreground": "#5d6168" }
+      "settings": { "foreground": "#7f838b" }
     },
     {
       "scope": ["entity.name.tag", "support.class.component"],

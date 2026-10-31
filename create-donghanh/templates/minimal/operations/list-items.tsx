@@ -22,7 +22,7 @@ export default registerOperation(ListItems, {
   type: "query",
   description: "List all items",
   instruction: "Call this to see all items.",
-  input: {},
+  input: { type: "object", properties: {} },
   responseKey: "listItems",
   // auth: "none" marks this op as callable anonymously: mcpRoutes serves it
   // without a Bearer token. Trade-off: the op cannot read a user-specific

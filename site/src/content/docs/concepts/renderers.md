@@ -7,7 +7,7 @@ The same `<Brief>` tree renders differently depending on the target. Each target
 
 ## ChatGPT Renderer
 
-Used by `gptRoutes()` (deprecated) and `mcpRoutes()` — produces JSON for the ChatGPT GPT Store and Apps SDK.
+Used by `gptRoutes()` (deprecated) — produces JSON for the ChatGPT GPT Store.
 
 | Primitive | Output |
 |-----------|--------|
@@ -22,6 +22,17 @@ import { renderForChatGpt } from "@donghanh/hono";
 const result = renderForChatGpt(brief);
 // { nextSteps: "...", suggestedActions: [...], display: "..." }
 ```
+
+## Apps SDK output
+
+`mcpRoutes()` starts from the same renderer but returns an MCP tool result.
+
+| Primitive | Output |
+|-----------|--------|
+| `<Message>` | `content[0].text` |
+| `<Action>` | `structuredContent.actions` |
+| `<Display>` | `structuredContent.display` |
+| `<Context>` | `_meta["donghanh/context"]` |
 
 ## LLM Renderer
 

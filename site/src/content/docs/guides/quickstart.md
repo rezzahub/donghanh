@@ -13,7 +13,7 @@ bun install
 
 Choose a template:
 - **minimal** — 2 operations, D1 SQLite
-- **trello** — 6 operations, boards/cards/members
+- **kanban-gpt** — 6 operations, boards/cards/members
 
 ## Initialize the database
 
@@ -27,7 +27,7 @@ bun run db:init
 bun run dev
 ```
 
-Your operations are now available as MCP tools at `http://localhost:8787/mcp`.
+Your operations are now available as MCP tools at `http://localhost:8787/mcp`. Before you deploy, set `resource` in `worker.ts` to your deployed URL, because MCP clients check it against the URL they connect to.
 
 ## Try it
 

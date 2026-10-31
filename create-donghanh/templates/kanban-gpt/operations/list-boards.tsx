@@ -31,7 +31,7 @@ export default registerOperation(ListBoards, {
   type: "query",
   description: "List all boards",
   instruction: "Call this first to see available boards.",
-  input: {},
+  input: { type: "object", properties: {} },
   responseKey: "listBoards",
   widget: "task-card",
 });

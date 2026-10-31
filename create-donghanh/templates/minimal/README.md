@@ -26,3 +26,5 @@ npx wrangler d1 create my-donghanh-app-db
 # Copy the database_id into wrangler.toml
 npx wrangler deploy
 ```
+
+Then set `resource` in `worker.ts` to your deployed URL and deploy again. MCP clients check it against the URL they connect to.

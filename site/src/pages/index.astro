@@ -4,10 +4,13 @@ import ClosingCta from "../components/home/ClosingCta.astro";
 import Hero from "../components/home/Hero.astro";
 import Packages from "../components/home/Packages.astro";
 import Skills from "../components/home/Skills.astro";
+import { fontsUrl } from "../fonts.mjs";
 import "../styles/tokens.css";
 import "../styles/home.css";
 
+const title = "donghanh";
 const description = "Build conversational interfaces with JSX.";
+const canonical = new URL("/", Astro.site);
 ---
 
 <!doctype html>
@@ -15,9 +18,21 @@ const description = "Build conversational interfaces with JSX.";
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>donghanh</title>
+    <meta name="color-scheme" content="dark" />
+    <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={title} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href={fontsUrl} />
   </head>
   <body>
     <div class="page">

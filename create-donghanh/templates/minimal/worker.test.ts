@@ -1,7 +1,12 @@
 import { expect, test } from "bun:test";
 import app from "./worker";
 
-test("lists operations as MCP tools", async () => {
+type Tool = {
+  name: string;
+  securitySchemes: { type: string }[];
+};
+
+async function listTools() {
   const res = await app.request(
     "/mcp",
     {
@@ -12,10 +17,18 @@ test("lists operations as MCP tools", async () => {
     { DB: {} },
   );
   expect(res.status).toBe(200);
-  const { result } = (await res.json()) as {
-    result: { tools: { name: string }[] };
-  };
-  const names = result.tools.map((t) => t.name);
+  const { result } = (await res.json()) as { result: { tools: Tool[] } };
+  return result.tools;
+}
+
+test("lists operations as MCP tools", async () => {
+  const names = (await listTools()).map((t) => t.name);
   expect(names).toContain("list-items");
   expect(names).toContain("add-item");
+});
+
+test("no tool asks for OAuth, since the template has no sign-in", async () => {
+  for (const tool of await listTools()) {
+    expect(tool.securitySchemes).toEqual([{ type: "noauth" }]);
+  }
 });
