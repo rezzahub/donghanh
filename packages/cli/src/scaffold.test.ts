@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, expect, test } from "vitest";
 import {
   operationTemplate,
   patchConfigWidget,

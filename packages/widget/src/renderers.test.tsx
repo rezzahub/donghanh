@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { render, screen } from "@testing-library/react";
+import { describe, expect, test } from "vitest";
 import { Actions, Display, Form } from "./renderers";
 
 describe("Display", () => {

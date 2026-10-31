@@ -1,4 +1,3 @@
-import { describe, expect, spyOn, test } from "bun:test";
 import type {
   ChatNode,
   Executor,
@@ -13,6 +12,7 @@ import {
   Display,
   Message,
 } from "@donghanh/core";
+import { describe, expect, test, vi } from "vitest";
 import { mcpRoutes } from "./mcp";
 
 function makeOp(
@@ -443,7 +443,7 @@ describe("mcpRoutes", () => {
   });
 
   test("warns once at startup above 4096 characters", async () => {
-    const warn = spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const reg = buildRegistry(
         App({ operations: {}, instructions: "x".repeat(4097) }),

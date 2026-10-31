@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test";
 import type { OperationComponent, OperationConfig } from "@donghanh/core";
 import { App, Brief, buildRegistry, Message } from "@donghanh/core";
+import { describe, expect, test } from "vitest";
 import { generateOpenApi } from "./openapi";
 
 function makeOp(

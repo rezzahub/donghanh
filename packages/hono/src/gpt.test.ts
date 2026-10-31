@@ -1,10 +1,10 @@
-import { describe, expect, test } from "bun:test";
 import type {
   Executor,
   OperationComponent,
   OperationConfig,
 } from "@donghanh/core";
 import { App, Brief, buildRegistry, Message } from "@donghanh/core";
+import { describe, expect, test } from "vitest";
 import { gptRoutes } from "./gpt";
 import type { Authenticate } from "./middleware";
 

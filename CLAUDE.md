@@ -2,7 +2,7 @@
 
 ## Workspace
 
-Bun monorepo. Workspaces: `packages/*` + `create-donghanh`.
+pnpm monorepo. Workspaces: `packages/*`, `create-donghanh`, `site`.
 
 ## Just commands
 
@@ -10,19 +10,19 @@ Use `just` for common ops. Run `just --list` for full set.
 
 **Per-package scripts:**
 ```
-just core <script>          # → cd packages/core && bun run <script>
+just core <script>          # → cd packages/core && pnpm run <script>
 just hono <script>
 just react <script>
 just widget <script>
 just widget-vite <script>
-just create <script>        # → cd create-donghanh && bun run <script>
+just create <script>        # → cd create-donghanh && pnpm run <script>
 ```
 
 **Root:**
 ```
 just lint            # biome + tsc
 just lint-fix        # auto-format
-just test            # bun test
+just test            # vitest run
 just test-templates  # scaffold + typecheck + test each template
 ```
 
@@ -52,7 +52,7 @@ just publish <core|hono|react|widget|widget-vite|create> <otp>
 
 ## Testing
 
-- `bun test` runs all `*.test.ts` in packages + `create-donghanh/templates/*` (excluding node_modules).
+- `vitest run` runs all `*.test.ts(x)` in packages (`vitest.config.ts`; widget tests use happy-dom). Scaffolded templates still use Bun; `just test-template` runs them in a temp dir.
 - Template integration tests: `just test-template kanban-gpt` or `just test-templates`.
 
 ## Lint / format
