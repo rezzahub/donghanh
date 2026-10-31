@@ -34,6 +34,12 @@ describe("buildRegistry", () => {
     ).toBeUndefined();
   });
 
+  test("the same component under two keys is registered once", () => {
+    const op = makeOp("x");
+    const reg = buildRegistry(App({ operations: { a: op, b: op } }));
+    expect(reg.list().map((o) => o.id)).toEqual(["x"]);
+  });
+
   test("throws on two operations with the same id", () => {
     expect(() =>
       buildRegistry(App({ operations: { a: makeOp("x"), b: makeOp("x") } })),

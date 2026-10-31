@@ -46,6 +46,7 @@ export function buildRegistry(
   for (const ref of appNode.operations) {
     const op = ref.component as OperationComponent;
     const id = op.operationConfig.id;
+    if (map.get(id) === op) continue;
     if (map.has(id)) throw new Error(`Duplicate operation id "${id}"`);
     map.set(id, op);
   }

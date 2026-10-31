@@ -339,11 +339,12 @@ describe("skillOperations", () => {
 
   test("spreading skill operations over an app operation of the same id throws", () => {
     const skills = skillOperations({ providers: [readOnly("a", ["x"])] });
-    const ops: Record<string, OperationComponent> = {
-      mine: skills.operations.search_skills,
+    const mine = (() => null) as unknown as OperationComponent;
+    mine.operationConfig = {
+      ...skills.operations.search_skills.operationConfig,
     };
     expect(() =>
-      buildRegistry(App({ operations: { ...ops, ...skills.operations } })),
+      buildRegistry(App({ operations: { mine, ...skills.operations } })),
     ).toThrow(/Duplicate operation id "search_skills"/);
   });
 
@@ -367,5 +368,46 @@ describe("skillOperations", () => {
     expect(() => skillOperations({ providers: [readOnly("a:b", [])] })).toThrow(
       /key/,
     );
+  });
+
+  test("instructions and errors name the prefixed tools", async () => {
+    const s = skillOperations({
+      providers: [memoryProvider("m")],
+      prefix: "idea_",
+    });
+    const config = (id: string) => s.operations[id].operationConfig;
+    const text = JSON.stringify([
+      config("idea_search_skills"),
+      config("idea_use_skill"),
+      config("idea_manage_skill"),
+      config("idea_delete_skill"),
+    ]);
+    expect(text).not.toMatch(/(?<![a-z_])(search_skills|use_skill)/);
+    expect(config("idea_search_skills").instruction).toContain(
+      "idea_use_skill",
+    );
+    await expect(run(s, "idea_use_skill", { slug: "nope" })).rejects.toThrow(
+      /idea_search_skills/,
+    );
+    await expect(
+      run(s, "idea_delete_skill", { id: "noprefix" }),
+    ).rejects.toThrow(/idea_search_skills/);
+  });
+
+  test("a prefix-less app operation named like an Object.prototype key falls through", async () => {
+    const s = skillOperations({ providers: [memoryProvider("m")] });
+    expect(await run(s, "constructor", {}, async () => "app")).toBe("app");
+    expect(await run(s, "toString", {}, async () => "app")).toBe("app");
+  });
+
+  test("folded and literal YAML descriptions throw an actionable error", () => {
+    for (const marker of [">-", ">", "|", "|-"]) {
+      expect(() =>
+        parseSkillMarkdown(
+          `---\nname: a\ndescription: ${marker}\n  Long text.\n---\nBody\n`,
+        ),
+      ).toThrow(/single line/);
+    }
+    expect(parseSkillMarkdown(md("a")).description).toBe("a desc");
   });
 });

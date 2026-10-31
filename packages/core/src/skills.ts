@@ -18,6 +18,7 @@ export interface Skill extends SkillSummary {
 }
 
 export interface SkillContext {
+  /** Null when the caller is unauthenticated. Through gptRoutes an anonymous caller arrives as the string "anonymous", not null. */
   userId: string | null;
   request: Request;
 }
@@ -73,6 +74,13 @@ export function parseSkillMarkdown(md: string): {
       .slice(i + 1)
       .trim()
       .replace(/^(["'])(.*)\1$/, "$2");
+  }
+  for (const key of ["name", "description"]) {
+    if (/^[>|][+-]?\d*$/.test(fields[key] ?? "")) {
+      throw new Error(
+        `SKILL.md frontmatter ${key} must be a single line; folded and literal YAML (">-", "|") is not supported`,
+      );
+    }
   }
   if (!fields.name) throw new Error("SKILL.md frontmatter needs a name");
   if (!fields.description) {
@@ -133,11 +141,17 @@ type Handler = (
   ctx: SkillContext,
 ) => Promise<unknown>;
 
-const MANAGE_INSTRUCTION =
+const manageInstruction = (search: string, use: string) =>
   "Use only when the user explicitly asks to create or change a skill. " +
-  "Pass exactly one of create or update. update needs the exact id from search_skills or use_skill; " +
+  "Pass exactly one of create or update. update needs the exact id from " +
+  search +
+  " or " +
+  use +
+  "; " +
   "never fall back to create when an update fails. Pass the complete SKILL.md (frontmatter name and description, then the body). " +
-  "create takes an optional target, one of writableTargets from search_skills; without it the first writable provider is used. " +
+  "create takes an optional target, one of writableTargets from " +
+  search +
+  "; without it the first writable provider is used. " +
   "Never delete duplicates automatically.";
 
 function textBrief(text: string) {
@@ -180,18 +194,20 @@ export function skillOperations(opts: {
 
   function route(id: unknown): { provider: SkillProvider; raw: string } {
     if (typeof id !== "string" || !id) {
-      throw new Error("id is required (use the exact id from search_skills)");
+      throw new Error(
+        `id is required (use the exact id from ${prefix}search_skills)`,
+      );
     }
     const i = id.indexOf(":");
     if (i < 1) {
       throw new Error(
-        `Invalid id "${id}": ids look like "<provider>:<id>"; use the exact id from search_skills`,
+        `Invalid id "${id}": ids look like "<provider>:<id>"; use the exact id from ${prefix}search_skills`,
       );
     }
     const provider = byKey.get(id.slice(0, i));
     if (!provider) {
       throw new Error(
-        `Unknown provider "${id.slice(0, i)}" in id "${id}"; use the exact id from search_skills`,
+        `Unknown provider "${id.slice(0, i)}" in id "${id}"; use the exact id from ${prefix}search_skills`,
       );
     }
     return { provider, raw: id.slice(i + 1) };
@@ -259,7 +275,9 @@ export function skillOperations(opts: {
           fail(p, "get");
         }
       }
-      throw new Error(`No skill with slug "${slug}"; call search_skills first`);
+      throw new Error(
+        `No skill with slug "${slug}"; call ${prefix}search_skills first`,
+      );
     },
     async manage_skill(vars, ctx) {
       const { create, update } = vars as { create?: unknown; update?: unknown };
@@ -339,8 +357,7 @@ export function skillOperations(opts: {
       type: "query",
       title: "Search skills",
       description: "Search the skills available to this user by keyword.",
-      instruction:
-        "Search skills before starting a kind of task. Pass a few keywords. Then call use_skill with the slug of a match.",
+      instruction: `Search skills before starting a kind of task. Pass a few keywords. Then call ${prefix}use_skill with the slug of a match.`,
       input: {
         type: "object",
         properties: {
@@ -371,7 +388,10 @@ export function skillOperations(opts: {
     input: {
       type: "object",
       properties: {
-        slug: { type: "string", description: "Slug from search_skills" },
+        slug: {
+          type: "string",
+          description: `Slug from ${prefix}search_skills`,
+        },
       },
       required: ["slug"],
     },
@@ -390,7 +410,10 @@ export function skillOperations(opts: {
         type: "mutation",
         title: "Create or update skill",
         description: "Create a new skill or update an existing one.",
-        instruction: MANAGE_INSTRUCTION,
+        instruction: manageInstruction(
+          `${prefix}search_skills`,
+          `${prefix}use_skill`,
+        ),
         input: {
           type: "object",
           properties: {
@@ -411,7 +434,7 @@ export function skillOperations(opts: {
               properties: {
                 id: {
                   type: "string",
-                  description: "Exact id from search_skills or use_skill",
+                  description: `Exact id from ${prefix}search_skills or ${prefix}use_skill`,
                 },
                 title: { type: "string" },
                 markdown: { type: "string", description: "Complete SKILL.md" },
@@ -431,12 +454,14 @@ export function skillOperations(opts: {
         type: "mutation",
         title: "Delete skill",
         description: "Delete a skill by id.",
-        instruction:
-          "Only when the user explicitly asks. Use the exact id from search_skills. Never delete duplicates automatically.",
+        instruction: `Only when the user explicitly asks. Use the exact id from ${prefix}search_skills. Never delete duplicates automatically.`,
         input: {
           type: "object",
           properties: {
-            id: { type: "string", description: "Exact id from search_skills" },
+            id: {
+              type: "string",
+              description: `Exact id from ${prefix}search_skills`,
+            },
           },
           required: ["id"],
         },
@@ -453,7 +478,11 @@ export function skillOperations(opts: {
         const name = operationId.startsWith(prefix)
           ? operationId.slice(prefix.length)
           : "";
-        if (name && operations[operationId] && handlers[name]) {
+        if (
+          name &&
+          Object.hasOwn(operations, operationId) &&
+          Object.hasOwn(handlers, name)
+        ) {
           return handlers[name](variables, {
             userId: context.userId,
             request: context.request,
