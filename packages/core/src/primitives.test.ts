@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import type { ChatNode, Renderer } from "./index";
 import { Fragment, jsx, jsxs } from "./jsx-runtime";
 // Test the JSX runtime + primitives by simulating what the transpiler produces

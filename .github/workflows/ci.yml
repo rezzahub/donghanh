@@ -11,10 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run lint
-      - run: bun test
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm test
 
   templates:
     runs-on: ubuntu-latest

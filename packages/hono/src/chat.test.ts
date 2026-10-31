@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { App, buildRegistry } from "@donghanh/core";
+import { describe, expect, test } from "vitest";
 import { resolveSystemPrompt } from "./chat";
 
 describe("resolveSystemPrompt", () => {

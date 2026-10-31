@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // Minimal DOM stub — we only need window, postMessage, addEventListener, MessageEvent.
 type Listener = (event: { source: unknown; data: unknown }) => void;
@@ -36,8 +36,8 @@ function installWindow(): {
 }
 
 async function freshBridge() {
-  const mod = await import(`./bridge?v=${Math.random()}`);
-  return mod as typeof import("./bridge");
+  vi.resetModules();
+  return import("./bridge");
 }
 
 describe("bridge", () => {

@@ -11,30 +11,30 @@ tmux:
 
 # Run a script in a workspace package (e.g. `just core build`, `just hono test`)
 core *args:
-    cd packages/core && bun run {{args}}
+    cd packages/core && pnpm run {{args}}
 hono *args:
-    cd packages/hono && bun run {{args}}
+    cd packages/hono && pnpm run {{args}}
 react *args:
-    cd packages/react && bun run {{args}}
+    cd packages/react && pnpm run {{args}}
 widget *args:
-    cd packages/widget && bun run {{args}}
+    cd packages/widget && pnpm run {{args}}
 widget-vite *args:
-    cd packages/widget-vite && bun run {{args}}
+    cd packages/widget-vite && pnpm run {{args}}
 config *args:
-    cd packages/config && bun run {{args}}
+    cd packages/config && pnpm run {{args}}
 cli *args:
-    cd packages/cli && bun run {{args}}
+    cd packages/cli && pnpm run {{args}}
 create *args:
-    cd create-donghanh && bun run {{args}}
+    cd create-donghanh && pnpm run {{args}}
 
 lint:
-    bun run lint
+    pnpm run lint
 
 lint-fix:
-    bun run lint:fix
+    pnpm run lint:fix
 
 test:
-    bun test
+    pnpm exec vitest run
 
 # Test a template by scaffolding, installing, type-checking, and running tests
 test-template template:
@@ -79,15 +79,15 @@ ci-logs:
 
 # Start docs site dev server
 site-dev:
-    cd site && bun run dev
+    cd site && pnpm run dev
 
 # Build docs site
 site-build:
-    cd site && bun run build
+    cd site && pnpm run build
 
 # Deploy docs site to Cloudflare
 site-deploy:
-    cd site && bun run deploy
+    cd site && pnpm run deploy
 
 # ============ Publish ============
 
@@ -97,7 +97,7 @@ publish target otp:
     set -euo pipefail
     publish_pkg() {
       echo "Publishing $1..."
-      cd "$1" && npm publish --access public --otp={{otp}} && cd - > /dev/null || true
+      cd "$1" && pnpm publish --access public --no-git-checks --otp={{otp}} && cd - > /dev/null || true
     }
     if [ "{{target}}" = "all" ]; then
       publish_pkg packages/core
@@ -107,7 +107,7 @@ publish target otp:
       publish_pkg packages/widget-vite
       publish_pkg packages/config
       publish_pkg packages/cli
-      cd create-donghanh && bun run build && cd ..
+      cd create-donghanh && pnpm run build && cd ..
       publish_pkg create-donghanh
     else
       case "{{target}}" in
@@ -118,7 +118,7 @@ publish target otp:
         widget-vite) publish_pkg packages/widget-vite ;;
         config) publish_pkg packages/config ;;
         cli) publish_pkg packages/cli ;;
-        create) cd create-donghanh && bun run build && cd .. && publish_pkg create-donghanh ;;
+        create) cd create-donghanh && pnpm run build && cd .. && publish_pkg create-donghanh ;;
         *) echo "Unknown target: {{target}}. Use: all, core, hono, react, widget, widget-vite, config, cli, create" && exit 1 ;;
       esac
     fi

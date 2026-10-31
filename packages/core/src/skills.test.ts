@@ -1,4 +1,4 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 import { App } from "./primitives";
 import { buildRegistry } from "./registry";
 import {
@@ -256,7 +256,7 @@ describe("skillOperations", () => {
   });
 
   test("one provider throwing in search doesn't hide the others", async () => {
-    const spy = spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       const bad: SkillProvider = {
         key: "bad",
@@ -516,7 +516,7 @@ describe("canCreate", () => {
   });
 
   test("a throwing canCreate counts as false and is logged", async () => {
-    const spy = spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       const bad = {
         ...memoryProvider("bad"),
@@ -551,7 +551,7 @@ describe("outages", () => {
   });
 
   test("all-failed or nothing-found-with-failure throws unavailable; partial results return", async () => {
-    const spy = spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       const empty = skillOperations({
         providers: [down("d1"), readOnly("a", ["x"])],
