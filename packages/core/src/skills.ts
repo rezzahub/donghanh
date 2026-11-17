@@ -6,6 +6,7 @@ import {
   parseFrontmatter,
   staticFiles,
 } from "./files";
+import { attachSkillFiles, renderSkillBrief } from "./skill-files";
 import type { Executor, OperationComponent } from "./types";
 import { registerOperation } from "./types";
 
@@ -191,6 +192,7 @@ const manageInstruction = (search: string, use: string) =>
 
 export function skillOperations(opts: {
   providers: SkillProvider[];
+  files?: FileProvider[];
   prefix?: string;
   auth?: "none" | "optional" | "required";
 }): {
@@ -198,6 +200,7 @@ export function skillOperations(opts: {
   wrap(executor: Executor): Executor;
 } {
   const { providers } = opts;
+  const fileProviders = opts.files ?? [];
   const prefix = opts.prefix ?? "";
   const seen = new Set<string>();
   for (const p of providers) {
@@ -340,7 +343,7 @@ export function skillOperations(opts: {
       for (const p of asked) {
         try {
           const s = await p.get(slug, ctx);
-          if (s) return ns(p, s);
+          if (s) return ns(p, await attachSkillFiles(s, fileProviders, ctx));
         } catch (e) {
           fail(p, "get", e);
           failed.push(p.key);
@@ -455,28 +458,33 @@ export function skillOperations(opts: {
     },
   );
 
-  define("use_skill", ({ data }) => textBrief((data as Skill).markdown), {
-    type: "query",
-    title: "Use skill",
-    description: "Load a skill's full SKILL.md by slug.",
-    instruction: `Keep it in context and follow it as guidance while using the normal tools. Pass provider when ${prefix}search_skills showed one, so the copy you saw is the one you load.`,
-    input: {
-      type: "object",
-      properties: {
-        slug: {
-          type: "string",
-          description: `Slug from ${prefix}search_skills`,
+  define(
+    "use_skill",
+    ({ data }) => textBrief(renderSkillBrief(data as Skill, prefix)),
+    {
+      type: "query",
+      title: "Use skill",
+      description:
+        "Load a skill's full SKILL.md by slug, with a manifest of its other files.",
+      instruction: `Keep it in context and follow it as guidance while using the normal tools. The result lists the skill's other files; open one with ${prefix}read_file when the guidance points to it. Pass provider when ${prefix}search_skills showed one, so the copy you saw is the one you load.`,
+      input: {
+        type: "object",
+        properties: {
+          slug: {
+            type: "string",
+            description: `Slug from ${prefix}search_skills`,
+          },
+          provider: {
+            type: "string",
+            description: `Provider key shown by ${prefix}search_skills`,
+          },
         },
-        provider: {
-          type: "string",
-          description: `Provider key shown by ${prefix}search_skills`,
-        },
+        required: ["slug"],
       },
-      required: ["slug"],
+      responseKey: "skill",
+      idempotent: true,
     },
-    responseKey: "skill",
-    idempotent: true,
-  });
+  );
 
   if (writable.length) {
     define(

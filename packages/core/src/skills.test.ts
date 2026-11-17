@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
-import { listFiles } from "./files";
+import { type FileProvider, listFiles, staticFiles } from "./files";
 import { App } from "./primitives";
 import { buildRegistry } from "./registry";
+import { renderSkillBrief } from "./skill-files";
 import {
   parseSkillMarkdown,
   type Skill,
@@ -645,5 +646,226 @@ describe("intent", () => {
       { ...ctx, intent: "find a skill" },
     );
     expect(seen).toBe("find a skill");
+  });
+});
+
+describe("use_skill files", () => {
+  const skillMd = (body = "Body.", extra = "") =>
+    `---\nname: s\ndescription: d\n${extra}---\n${body}\n`;
+  const setup = (
+    tree: Record<string, string>,
+    opts: { prefix?: string; key?: string } = {},
+  ) => {
+    const p = staticSkills(opts.key ?? "k", tree);
+    const s = skillOperations({
+      providers: [p],
+      files: [p.files],
+      ...(opts.prefix ? { prefix: opts.prefix } : {}),
+    });
+    const use = async (vars: Record<string, unknown> = { slug: "s" }) =>
+      (await run(s, `${opts.prefix ?? ""}use_skill`, vars)) as Skill;
+    return { p, s, use };
+  };
+
+  test("manifest, refs and uri", async () => {
+    const { use } = setup({
+      "s/SKILL.md": skillMd("See [x](references/a.md)."),
+      "s/references/a.md": "# A\n\nAlpha.\n",
+    });
+    const skill = await use();
+    expect(skill.uri).toBe("skills://k/s/SKILL.md");
+    expect(skill.files?.map((f) => f.uri)).toEqual([
+      "skills://k/s/references/a.md",
+    ]);
+    expect(skill.files?.every((f) => f.kind === "file")).toBe(true);
+    expect(skill.refs).toEqual([
+      { raw: "references/a.md", uri: "skills://k/s/references/a.md" },
+    ]);
+    expect(skill.moreFiles).toBeUndefined();
+    const brief = renderSkillBrief(skill, "");
+    expect(brief.startsWith(skill.markdown)).toBe(true);
+    expect(brief).toContain("--- files (skills://k/s/SKILL.md) ---");
+    expect(brief).toContain("references/a.md  ");
+    expect(brief).toContain("references/a.md → skills://k/s/references/a.md");
+  });
+
+  test("includes fill included and the brief", async () => {
+    const { use } = setup({
+      "s/SKILL.md": skillMd(
+        "Go.",
+        "metadata:\n  include: references/a.md, references/b.md\n",
+      ),
+      "s/references/a.md": "AAA\n",
+      "s/references/b.md": "BBB\n",
+    });
+    const skill = await use();
+    expect(skill.included?.map((i) => i.path)).toEqual([
+      "references/a.md",
+      "references/b.md",
+    ]);
+    expect(skill.included?.[0]?.text).toContain("AAA");
+    expect(skill.notice).toBeUndefined();
+    const brief = renderSkillBrief(skill, "");
+    expect(brief).toContain("--- included: references/a.md ---");
+    expect(brief.indexOf("--- included: references/a.md")).toBeLessThan(
+      brief.indexOf("--- included: references/b.md"),
+    );
+    expect(brief.indexOf("--- included: references/b.md")).toBeLessThan(
+      brief.indexOf("--- files ("),
+    );
+  });
+
+  test("an include over the cap stays manifest-only with a notice", async () => {
+    const line = `${"x".repeat(99)}\n`;
+    const { use } = setup({
+      "s/SKILL.md": skillMd(
+        "Go.",
+        "metadata:\n  include: references/a.md, references/b.md\n",
+      ),
+      "s/references/a.md": line.repeat(300),
+      "s/references/b.md": line.repeat(50),
+    });
+    const skill = await use();
+    expect(skill.included?.map((i) => i.path)).toEqual(["references/a.md"]);
+    expect(skill.included?.[0]?.text.length).toBeGreaterThan(29000);
+    expect(skill.notice).toContain("references/b.md");
+    expect(skill.files?.map((f) => f.uri)).toContain(
+      "skills://k/s/references/b.md",
+    );
+  });
+
+  test("a missing include adds a notice and does not throw", async () => {
+    const { use } = setup({
+      "s/SKILL.md": skillMd(
+        "Go.",
+        "metadata:\n  include: references/nope.md\n",
+      ),
+      "s/references/a.md": "A\n",
+    });
+    const skill = await use();
+    expect(skill.included ?? []).toEqual([]);
+    expect(skill.notice).toContain("references/nope.md");
+  });
+
+  test("a binary include is skipped with a notice", async () => {
+    const files: FileProvider = staticFiles("skills", {
+      "k/s/SKILL.md": skillMd("Go.", "metadata:\n  include: pic.png\n"),
+      "k/s/pic.png": { url: "https://x/p.png", mime: "image/png", bytes: 10 },
+    });
+    const p = staticSkills("k", {
+      "s/SKILL.md": skillMd("Go.", "metadata:\n  include: pic.png\n"),
+    });
+    const s = skillOperations({ providers: [p], files: [files] });
+    const skill = (await run(s, "use_skill", { slug: "s" })) as Skill;
+    expect(skill.included ?? []).toEqual([]);
+    expect(skill.notice).toContain("pic.png");
+    const png = skill.files?.find((f) => f.uri.endsWith("pic.png"));
+    expect(png?.mime).toBe("image/png");
+    expect(png?.lines).toBeUndefined();
+    expect(renderSkillBrief(skill, "")).toContain("image/png");
+  });
+
+  test("a manifest over 50 entries reports the surplus", async () => {
+    const tree: Record<string, string> = { "s/SKILL.md": skillMd() };
+    for (let i = 0; i < 60; i++) {
+      tree[`s/f${String(i).padStart(2, "0")}.md`] = `f${i}\n`;
+    }
+    const { use } = setup(tree);
+    const skill = await use();
+    expect(skill.files).toHaveLength(50);
+    expect(skill.moreFiles).toBe(10);
+    expect(renderSkillBrief(skill, "mt_")).toContain(
+      "10 more — mt_list_files { uri: skills://k/s/ }",
+    );
+  });
+
+  test("without files the output is markdown only", async () => {
+    const p = staticSkills("k", {
+      "s/SKILL.md": skillMd("Go.", "metadata:\n  include: a.md\n"),
+      "s/a.md": "A\n",
+    });
+    const s = skillOperations({ providers: [p] });
+    const skill = (await run(s, "use_skill", { slug: "s" })) as Skill;
+    expect(Object.keys(skill).sort()).toEqual(
+      ["description", "hash", "id", "markdown", "name", "slug", "uri"].sort(),
+    );
+    expect(renderSkillBrief(skill, "")).toBe(skill.markdown);
+    const node = JSON.stringify(
+      s.operations.use_skill({ data: skill, variables: {} }),
+    );
+    expect(node).not.toContain("--- files");
+  });
+
+  test("a provider for another scheme leaves the skill as is", async () => {
+    const p = staticSkills("k", { "s/SKILL.md": skillMd() });
+    const other = staticFiles("other", { "k/s/a.md": "A\n" });
+    const s = skillOperations({ providers: [p], files: [other] });
+    const skill = (await run(s, "use_skill", { slug: "s" })) as Skill;
+    expect(skill.files).toBeUndefined();
+    expect(skill.refs).toBeUndefined();
+  });
+
+  test("hash stays the hash of SKILL.md", async () => {
+    const { use } = setup({
+      "s/SKILL.md": skillMd("Go.", "metadata:\n  include: a.md\n"),
+      "s/a.md": "A\n",
+    });
+    const skill = await use();
+    expect(skill.hash).toBe(await skillHash(skill.markdown));
+  });
+
+  test("the footer names the prefixed read_file and the brief is wired", async () => {
+    const { s, use } = setup(
+      { "s/SKILL.md": skillMd(), "s/a.md": "A\n" },
+      { prefix: "mt_" },
+    );
+    const skill = await use();
+    expect(renderSkillBrief(skill, "mt_")).toContain("mt_read_file { uri }");
+    const node = JSON.stringify(
+      s.operations.mt_use_skill({ data: skill, variables: {} }),
+    );
+    expect(node).toContain("mt_read_file");
+    expect(node).toContain("--- files (");
+  });
+
+  test("a key with underscore, hyphen and capitals round-trips", async () => {
+    const { use } = setup(
+      {
+        "s/SKILL.md": skillMd(
+          "See [x](references/a.md).",
+          "metadata:\n  include: references/a.md\n",
+        ),
+        "s/references/a.md": "A\n",
+      },
+      { key: "My_key-1" },
+    );
+    const skill = await use();
+    expect(skill.uri).toBe("skills://My_key-1/s/SKILL.md");
+    expect(skill.files).toHaveLength(1);
+    expect(skill.refs).toHaveLength(1);
+    expect(skill.included?.map((i) => i.path)).toEqual(["references/a.md"]);
+  });
+
+  test("a throwing list leaves the markdown without a manifest", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const inner = staticFiles("skills", { "k/s/SKILL.md": skillMd() });
+      const files: FileProvider = {
+        ...inner,
+        async list() {
+          throw new Error("secret-boom");
+        },
+      };
+      const p = staticSkills("k", { "s/SKILL.md": skillMd() });
+      const s = skillOperations({ providers: [p], files: [files] });
+      const skill = (await run(s, "use_skill", { slug: "s" })) as Skill;
+      expect(skill.markdown).toBe(skillMd());
+      expect(skill.files).toBeUndefined();
+      const text = renderSkillBrief(skill, "");
+      expect(text).not.toContain("secret-boom");
+      expect(JSON.stringify(skill)).not.toContain("secret-boom");
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
