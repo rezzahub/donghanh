@@ -1,4 +1,11 @@
 import { textBrief } from "./brief";
+import {
+  type FileContext,
+  type FileEntry,
+  type FileProvider,
+  parseFrontmatter,
+  staticFiles,
+} from "./files";
 import type { Executor, OperationComponent } from "./types";
 import { registerOperation } from "./types";
 
@@ -14,16 +21,16 @@ export interface SkillSummary {
 
 export interface Skill extends SkillSummary {
   markdown: string;
-  files?: Record<string, string>;
+  uri?: string;
+  files?: FileEntry[];
+  moreFiles?: number;
+  included?: { path: string; text: string }[];
+  refs?: { raw: string; uri: string }[];
+  notice?: string;
 }
 
-export interface SkillContext {
-  /** Null when the caller is unauthenticated. Through gptRoutes an anonymous caller arrives as the string "anonymous", not null. */
-  userId: string | null;
-  request: Request;
-  /** The caller's stated reason for the call, when the host passes one. */
-  intent?: string;
-}
+/** Same shape as a file context; userId is null when unauthenticated, and "anonymous" through gptRoutes. */
+export type SkillContext = FileContext;
 
 export interface SkillProvider {
   key: string;
@@ -66,33 +73,14 @@ export async function skillHash(markdown: string): Promise<string> {
 export function parseSkillMarkdown(md: string): {
   name: string;
   description: string;
+  metadata: Record<string, string>;
   body: string;
 } {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(md);
-  if (!m) throw new Error("SKILL.md must start with a --- frontmatter block");
-  const fields: Record<string, string> = {};
-  const continued = new Set<string>();
-  let last = "";
-  for (const line of m[1].split(/\r?\n/)) {
-    if (/^\s/.test(line)) {
-      if (line.trim() && (last === "name" || last === "description")) {
-        continued.add(last);
-      }
-      continue;
-    }
-    const i = line.indexOf(":");
-    if (i < 1) {
-      last = "";
-      continue;
-    }
-    last = line.slice(0, i).trim();
-    fields[last] = line
-      .slice(i + 1)
-      .trim()
-      .replace(/^(["'])(.*)\1$/, "$2");
-  }
+  const fm = parseFrontmatter(md);
+  if (!fm) throw new Error("SKILL.md must start with a --- frontmatter block");
+  const { fields } = fm;
   for (const key of ["name", "description"]) {
-    if (continued.has(key) || /^[>|][+-]?\d*$/.test(fields[key] ?? "")) {
+    if (fm.folded.includes(key)) {
       throw new Error(
         `SKILL.md frontmatter ${key} must be a single line; folded and literal YAML (">-", "|") is not supported`,
       );
@@ -102,20 +90,36 @@ export function parseSkillMarkdown(md: string): {
   if (!fields.description) {
     throw new Error("SKILL.md frontmatter needs a description");
   }
-  return { name: fields.name, description: fields.description, body: m[2] };
+  return {
+    name: fields.name,
+    description: fields.description,
+    metadata: fm.metadata,
+    body: fm.body,
+  };
 }
 
-/** Read-only provider over SKILL.md strings. Slug = frontmatter name; id = slug. */
+/**
+ * Read-only provider over a file tree. Skills are the `<slug>/SKILL.md`
+ * entries; every other entry is just a file, reachable through `.files`.
+ */
 export function staticSkills(
   key: string,
-  files: Record<string, string>,
-): SkillProvider {
+  tree: Record<string, string>,
+): SkillProvider & { files: FileProvider } {
   const skills = new Map<string, Promise<Skill>>();
-  for (const markdown of Object.values(files)) {
+  for (const [path, markdown] of Object.entries(tree)) {
+    const m = /^([^/]+)\/SKILL\.md$/.exec(path);
+    if (!m) continue;
+    const dir = m[1] as string;
     const { name, description } = parseSkillMarkdown(markdown);
     if (!SLUG.test(name)) {
       throw new Error(
         `Skill slug "${name}" must be lowercase letters, digits and single hyphens`,
+      );
+    }
+    if (dir !== name) {
+      throw new Error(
+        `Skill directory "${dir}" must equal the frontmatter name "${name}"`,
       );
     }
     skills.set(
@@ -127,13 +131,29 @@ export function staticSkills(
         description,
         hash,
         markdown,
+        uri: `skills://${key}/${path}`,
       })),
     );
   }
-  const summarize = ({ markdown: _m, files: _f, ...s }: Skill): SkillSummary =>
-    s;
+  const files = staticFiles(
+    "skills",
+    Object.fromEntries(
+      Object.entries(tree).map(([p, v]) => [`${key}/${p}`, v]),
+    ),
+  );
+  const summarize = ({
+    markdown: _m,
+    files: _f,
+    uri: _u,
+    included: _i,
+    refs: _r,
+    moreFiles: _mf,
+    notice: _n,
+    ...s
+  }: Skill): SkillSummary => s;
   return {
     key,
+    files,
     async search(query) {
       const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
       const all = await Promise.all(skills.values());

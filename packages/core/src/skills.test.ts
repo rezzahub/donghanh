@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
+import { listFiles } from "./files";
 import { App } from "./primitives";
 import { buildRegistry } from "./registry";
 import {
@@ -71,15 +72,24 @@ function memoryProvider(
 }
 
 const readOnly = (key: string, names: string[]) =>
-  staticSkills(key, Object.fromEntries(names.map((n) => [n, md(n)])));
+  staticSkills(
+    key,
+    Object.fromEntries(names.map((n) => [`${n}/SKILL.md`, md(n)])),
+  );
 
 describe("parseSkillMarkdown", () => {
   test("parseSkillMarkdown requires name and description frontmatter", () => {
     expect(parseSkillMarkdown(md("a-b", "Does it", "Hello"))).toEqual({
       name: "a-b",
       description: "Does it",
+      metadata: {},
       body: "Hello\n",
     });
+    expect(
+      parseSkillMarkdown(
+        '---\nname: a\ndescription: d\nmetadata:\n  owner: ann\n  tier: "2"\n---\nB',
+      ).metadata,
+    ).toEqual({ owner: "ann", tier: "2" });
     expect(() => parseSkillMarkdown("no frontmatter")).toThrow(/frontmatter/);
     expect(() => parseSkillMarkdown("---\nname: x\n---\nb")).toThrow(
       /description/,
@@ -90,7 +100,42 @@ describe("parseSkillMarkdown", () => {
   });
 
   test("staticSkills rejects a bad slug", () => {
-    expect(() => staticSkills("k", { a: md("Bad Name") })).toThrow(/slug/);
+    expect(() => staticSkills("k", { "bad/SKILL.md": md("Bad Name") })).toThrow(
+      /slug/,
+    );
+  });
+
+  test("staticSkills rejects a directory that differs from the name", () => {
+    expect(() => staticSkills("k", { "other/SKILL.md": md("x") })).toThrow(
+      /directory/,
+    );
+  });
+
+  test("staticSkills treats other tree entries as files, not skills", async () => {
+    const s = staticSkills("k", {
+      "x/SKILL.md": md("x"),
+      "x/notes.md": "# Notes\n",
+      "a/b/SKILL.md": md("zzz"),
+    });
+    expect((await s.search("", ctx)).map((k) => k.slug)).toEqual(["x"]);
+    expect(await s.get("zzz", ctx)).toBeNull();
+    const l = await listFiles([s.files], { uri: "skills://k/x/" }, ctx);
+    expect(l.entries.map((e) => e.uri).sort()).toEqual([
+      "skills://k/x/SKILL.md",
+      "skills://k/x/notes.md",
+    ]);
+    const nested = await listFiles([s.files], { uri: "skills://k/a/b/" }, ctx);
+    expect(nested.entries.map((e) => e.uri)).toEqual([
+      "skills://k/a/b/SKILL.md",
+    ]);
+  });
+
+  test("a skill has a uri; search summaries omit it and the markdown", async () => {
+    const s = staticSkills("k", { "x/SKILL.md": md("x") });
+    expect((await s.get("x", ctx))?.uri).toBe("skills://k/x/SKILL.md");
+    const [sum] = await s.search("", ctx);
+    expect(sum).not.toHaveProperty("uri");
+    expect(sum).not.toHaveProperty("markdown");
   });
 });
 
@@ -164,7 +209,7 @@ describe("skillOperations", () => {
   test("use_skill returns the markdown and its hash", async () => {
     const markdown = md("deploy", "Deploys", "Steps.");
     const s = skillOperations({
-      providers: [staticSkills("a", { x: markdown })],
+      providers: [staticSkills("a", { "deploy/SKILL.md": markdown })],
     });
     const r = (await run(s, "use_skill", { slug: "deploy" })) as Skill;
     expect(r.id).toBe("a:deploy");
@@ -440,9 +485,9 @@ describe("frontmatter keys", () => {
 describe("staticSkills search", () => {
   test("splits on whitespace and matches any token, case-insensitively, in slug too", async () => {
     const p = staticSkills("a", {
-      x: md("pr-review", "Checks a pull request"),
-      y: md("deploy", "Ships it"),
-      z: md("other", "Unrelated"),
+      "pr-review/SKILL.md": md("pr-review", "Checks a pull request"),
+      "deploy/SKILL.md": md("deploy", "Ships it"),
+      "other/SKILL.md": md("other", "Unrelated"),
     });
     const names = async (q: string) =>
       (await p.search(q, ctx)).map((s) => s.name).sort();
@@ -457,8 +502,12 @@ describe("provider selection", () => {
   const two = () =>
     skillOperations({
       providers: [
-        staticSkills("a", { x: md("deploy", "From A", "A body") }),
-        staticSkills("b", { x: md("deploy", "From B", "B body") }),
+        staticSkills("a", {
+          "deploy/SKILL.md": md("deploy", "From A", "A body"),
+        }),
+        staticSkills("b", {
+          "deploy/SKILL.md": md("deploy", "From B", "B body"),
+        }),
       ],
     });
 

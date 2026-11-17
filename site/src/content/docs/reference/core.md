@@ -110,8 +110,8 @@ Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `descript
 ### `SkillProvider`
 `{ key, search(query, ctx), get(slug, ctx), create?, update?, delete? }`. `key` uses letters, digits, `_` or `-` and must be unique. A provider with `create`, `update` or `delete` is writable. `canCreate?(ctx)` (default true when `create` exists) decides per caller whether the provider is a create target; a throwing `canCreate` counts as false. `ctx` is `{ userId, request, intent? }`; `userId` is `null` for an unauthenticated caller, except through `gptRoutes`, where an anonymous caller arrives as the string `"anonymous"`, not `null`.
 
-### `staticSkills(key, files)`
-Read-only provider over `SKILL.md` strings. The slug is the frontmatter `name` (lowercase letters, digits, single hyphens).
+### `staticSkills(key, tree)`
+Read-only provider over a file tree of `<slug>/SKILL.md` strings (other entries are plain files, reachable through `.files`). The slug is the frontmatter `name` (lowercase letters, digits, single hyphens).
 
 ### `skillOperations({ providers, prefix?, auth? })`
 Returns `{ operations, wrap(executor) }`. `prefix` is prepended to the operation ids below. Spread `operations` into `App`, and wrap your executor with `wrap`.
