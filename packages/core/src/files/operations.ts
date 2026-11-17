@@ -2,6 +2,7 @@ import { textBrief } from "../brief";
 import type { Executor, OperationComponent } from "../types";
 import { registerOperation } from "../types";
 import { grepFiles } from "./grep";
+import { FILE_LIMITS } from "./limits";
 import { listFiles } from "./list";
 import { readFile } from "./read";
 import { searchFiles } from "./search";
@@ -223,20 +224,26 @@ export function fileOperations(opts: {
         );
       }
       const from = d.lines?.from ?? 1;
-      const body = d.text ? d.text.split("\n") : [];
-      if (!body.length) {
+      const to = d.lines?.to ?? 0;
+      const total = d.lines?.total ?? 0;
+      if (from > total || to < from) {
         return textBrief(
-          `${d.uri} has no lines in this range (past the end; the file has ${d.lines?.total ?? 0} lines).`,
+          `${d.uri} has no lines in this range (past the end; the file has ${total} lines).`,
         );
       }
-      const out = body.map((t, i) => `${from + i}\t${t}`);
+      const out = (d.text ?? "").split("\n").map((t, i) => `${from + i}\t${t}`);
       if (d.next) {
         out.push(
-          `[truncated: lines ${d.lines?.from}-${d.lines?.to} of ${d.lines?.total}. Continue with ${read} uri: ${d.next.uri}, offset: ${d.next.offset}${d.next.limit !== undefined ? `, limit: ${d.next.limit}` : ""}]`,
+          `[truncated: lines ${from}-${to} of ${total}. Continue with ${read} uri: ${d.next.uri}, offset: ${d.next.offset}${d.next.limit !== undefined ? `, limit: ${d.next.limit}` : ""}]`,
+        );
+      } else if (d.truncated && from > 1) {
+        const offset = Math.max(1, from - FILE_LIMITS.readLines);
+        out.push(
+          `[truncated: lines ${from}-${to} of ${total}. Earlier lines: ${read} uri: ${d.uri}, offset: ${offset}, limit: ${Math.min(FILE_LIMITS.readLines, from - 1)}]`,
         );
       } else if (d.truncated) {
         out.push(
-          `[truncated: lines ${d.lines?.from}-${d.lines?.to} of ${d.lines?.total}; long lines were cut or the size cap applied]`,
+          `[truncated: lines ${from}-${to} of ${total}; long lines were cut]`,
         );
       }
       return textBrief(out.join("\n"));

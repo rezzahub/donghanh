@@ -28,6 +28,17 @@ const render = (
   data: unknown,
 ) => JSON.stringify(ops.operations[id]({ data, variables: {} }));
 
+const message = (
+  ops: ReturnType<typeof fileOperations>,
+  id: string,
+  data: unknown,
+) =>
+  (
+    ops.operations[id]({ data, variables: {} }) as {
+      children: { content: string }[];
+    }
+  ).children[0].content;
+
 const searching = (): FileProvider => ({
   ...tree(),
   scheme: "s",
@@ -130,6 +141,64 @@ describe("fileOperations", () => {
     const text = render(f, "read_file", data);
     expect(text).toContain("3");
     expect(text.toLowerCase()).toContain("past the end");
+  });
+
+  test("a blank slice is not reported as past the end", async () => {
+    const f = fileOperations({
+      providers: [staticFiles("b", { "x.md": "a\n\nc" })],
+    });
+    const data = await run(f, "read_file", {
+      uri: "b://x.md",
+      offset: 2,
+      limit: 1,
+    });
+    const text = render(f, "read_file", data);
+    expect(text).toContain("2\\t");
+    expect(text).not.toContain("past the end");
+  });
+
+  test("a tail cut by the size cap says how to read the earlier lines", async () => {
+    const wide = Array.from(
+      { length: 300 },
+      (_, i) => `${i + 1} ${"x".repeat(1500)}`,
+    );
+    const f = fileOperations({
+      providers: [staticFiles("w", { "wide.md": wide.join("\n") })],
+    });
+    const data = (await run(f, "read_file", {
+      uri: "w://wide.md",
+      tail: 200,
+    })) as { lines: { from: number } };
+    const from = data.lines.from;
+    expect(from).toBeGreaterThan(1);
+    const m = /offset: (\d+), limit: (\d+)/.exec(message(f, "read_file", data));
+    expect(m).not.toBeNull();
+    const [offset, limit] = [Number(m?.[1]), Number(m?.[2])];
+    const earlier = (await run(f, "read_file", {
+      uri: "w://wide.md",
+      offset,
+      limit,
+    })) as {
+      text: string;
+      lines: { from: number; to: number };
+      next?: { offset: number };
+    };
+    expect(earlier.lines.from).toBe(offset);
+    // The byte cap may stop the window short; its next then continues to from - 1.
+    expect(earlier.lines.to < from - 1 ? earlier.next : true).toBeTruthy();
+    expect(offset).toBeLessThan(from);
+  });
+
+  test("a complete read with only a long line cut notes it without an offset", async () => {
+    const f = fileOperations({
+      providers: [
+        staticFiles("l", { "long.md": `short\n${"y".repeat(50000)}\nend` }),
+      ],
+    });
+    const data = await run(f, "read_file", { uri: "l://long.md" });
+    const msg = message(f, "read_file", data);
+    expect(msg).toContain("long lines were cut");
+    expect(msg).not.toContain("offset");
   });
 
   test("a relative path without base rejects", async () => {
