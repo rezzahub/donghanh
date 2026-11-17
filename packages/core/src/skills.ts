@@ -1,4 +1,4 @@
-import { Brief, Message } from "./primitives";
+import { textBrief } from "./brief";
 import type { Executor, OperationComponent } from "./types";
 import { registerOperation } from "./types";
 
@@ -168,10 +168,6 @@ const manageInstruction = (search: string, use: string) =>
   search +
   "; without it the first writable provider is used. " +
   "Never delete duplicates automatically.";
-
-function textBrief(text: string) {
-  return Brief({ children: [Message({ children: text })] });
-}
 
 export function skillOperations(opts: {
   providers: SkillProvider[];

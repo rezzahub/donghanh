@@ -1,0 +1,212 @@
+import { describe, expect, test, vi } from "vitest";
+import type { Executor } from "../types";
+import { FILES_INSTRUCTIONS, fileOperations, staticFiles } from "./index";
+import type { FileProvider } from "./types";
+
+const ctx = { userId: "u1", request: new Request("http://x/") };
+
+const big = Array.from({ length: 500 }, (_, i) => `line ${i + 1}`).join("\n");
+const tree = () =>
+  staticFiles("t", {
+    "a/big.md": big,
+    "a/small.md": "alpha\nbeta needle\ngamma",
+    "a/pic.png": { url: "https://cdn/x.png", mime: "image/png", bytes: 99 },
+  });
+
+async function run(
+  ops: ReturnType<typeof fileOperations>,
+  id: string,
+  vars: Record<string, unknown>,
+  fallback: Executor = async () => "app",
+) {
+  return ops.wrap(fallback)(id, vars, ctx);
+}
+
+const render = (
+  ops: ReturnType<typeof fileOperations>,
+  id: string,
+  data: unknown,
+) => JSON.stringify(ops.operations[id]({ data, variables: {} }));
+
+const searching = (): FileProvider => ({
+  ...tree(),
+  scheme: "s",
+  async search() {
+    return [
+      { uri: "s://a/x.md", lines: [3, 9], snippet: "found it", score: 0.9 },
+    ];
+  },
+});
+
+describe("fileOperations", () => {
+  test("ids honour prefix and search_files needs a searching provider", () => {
+    const plain = fileOperations({ providers: [tree()], prefix: "f_" });
+    expect(Object.keys(plain.operations).sort()).toEqual([
+      "f_grep_files",
+      "f_list_files",
+      "f_read_file",
+    ]);
+    const withSearch = fileOperations({ providers: [searching()] });
+    expect(Object.keys(withSearch.operations)).toContain("search_files");
+  });
+
+  test("auth reaches every operationConfig and ops are idempotent queries", () => {
+    const f = fileOperations({
+      providers: [searching()],
+      auth: "optional",
+    });
+    for (const op of Object.values(f.operations)) {
+      expect(op.operationConfig.auth).toBe("optional");
+      expect(op.operationConfig.type).toBe("query");
+      expect(op.operationConfig.idempotent).toBe(true);
+    }
+  });
+
+  test("input schemas declare integer, string and boolean fields", () => {
+    const f = fileOperations({ providers: [searching()] });
+    const props = (id: string) =>
+      (
+        f.operations[id].operationConfig.input as {
+          properties: Record<string, { type: string }>;
+        }
+      ).properties;
+    expect(props("read_file").head.type).toBe("integer");
+    expect(props("read_file").offset.type).toBe("integer");
+    expect(props("read_file").uri.type).toBe("string");
+    expect(props("list_files").depth.type).toBe("integer");
+    expect(props("grep_files").ignoreCase.type).toBe("boolean");
+    expect(props("grep_files").context.type).toBe("integer");
+    expect(props("search_files").query.type).toBe("string");
+  });
+
+  test("instructions equal FILES_INSTRUCTIONS and mention relative paths", () => {
+    const f = fileOperations({ providers: [tree()] });
+    expect(f.instructions).toBe(FILES_INSTRUCTIONS);
+    expect(f.instructions).toContain("relative");
+    expect(f.instructions).toContain("list_files");
+  });
+
+  test("tool instructions carry the paging guidance", () => {
+    const f = fileOperations({ providers: [searching()] });
+    const read = f.operations.read_file.operationConfig.instruction ?? "";
+    expect(read).toContain("200");
+    expect(read).toContain("next");
+    expect(read).toContain("base");
+    expect(read).toContain("grep_files");
+  });
+
+  test("read_file renders numbered lines and a footer with next", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    const data = await run(f, "read_file", { uri: "t://a/big.md" });
+    const text = render(f, "read_file", data);
+    expect(text).toContain("1\\tline 1");
+    expect(text).not.toContain("201\\t");
+    expect(text).toContain("offset");
+    expect(text).toContain("201");
+    expect(text).toContain("t://a/big.md");
+  });
+
+  test("read_file footer includes limit when present", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    const data = await run(f, "read_file", { uri: "t://a/big.md", limit: 10 });
+    expect(render(f, "read_file", data)).toContain("limit");
+  });
+
+  test("read_file on binary prints mime, bytes and url without content", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    const data = await run(f, "read_file", { uri: "t://a/pic.png" });
+    const text = render(f, "read_file", data);
+    expect(text).toContain("image/png");
+    expect(text).toContain("99");
+    expect(text).toContain("https://cdn/x.png");
+  });
+
+  test("read_file past the end prints a note with the total", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    const data = await run(f, "read_file", {
+      uri: "t://a/small.md",
+      offset: 50,
+    });
+    const text = render(f, "read_file", data);
+    expect(text).toContain("3");
+    expect(text.toLowerCase()).toContain("past the end");
+  });
+
+  test("a relative path without base rejects", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    await expect(run(f, "read_file", { path: "x.md" })).rejects.toThrow(
+      /needs base/,
+    );
+  });
+
+  test("a relative path with base resolves", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    const data = await run(f, "read_file", {
+      path: "small.md",
+      base: "t://a/big.md",
+    });
+    expect(render(f, "read_file", data)).toContain("beta needle");
+  });
+
+  test("non-integer and non-finite numbers are rejected", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    await expect(
+      run(f, "read_file", { uri: "t://a/big.md", head: 1.5 }),
+    ).rejects.toThrow(/head must be an integer/);
+    await expect(
+      run(f, "read_file", { uri: "t://a/big.md", offset: Number.NaN }),
+    ).rejects.toThrow(/offset must be an integer/);
+    await expect(
+      run(f, "list_files", { uri: "t://a", depth: Number.POSITIVE_INFINITY }),
+    ).rejects.toThrow(/depth must be an integer/);
+    await expect(
+      run(f, "grep_files", { uri: "t://a", pattern: "x", context: "2" }),
+    ).rejects.toThrow(/context must be an integer/);
+  });
+
+  test("list_files with no uri lists roots, and lists entries", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    const roots = await run(f, "list_files", {});
+    expect(render(f, "list_files", roots)).toContain("t://");
+    const data = await run(f, "list_files", { uri: "t://a" });
+    const text = render(f, "list_files", data);
+    expect(text).toContain("t://a/small.md");
+    expect(text).toContain("3 lines");
+  });
+
+  test("grep_files prints matches with context and the capped note", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    const data = await run(f, "grep_files", {
+      uri: "t://a",
+      pattern: "needle",
+      context: 1,
+    });
+    const text = render(f, "grep_files", data);
+    expect(text).toContain("t://a/small.md:2: beta needle");
+    const capped = render(f, "grep_files", { hits: [], capped: true });
+    expect(capped.toLowerCase()).toContain("capped");
+  });
+
+  test("search_files prints hits with a read_file hint", async () => {
+    const f = fileOperations({ providers: [searching()] });
+    const data = await run(f, "search_files", { query: "q" });
+    const text = render(f, "search_files", data);
+    expect(text).toContain("s://a/x.md");
+    expect(text).toContain("3-9");
+    expect(text).toContain("found it");
+    expect(text).toContain("read_file");
+  });
+
+  test("an unknown operation id goes to the fallback", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    const fb = vi.fn(async () => "app");
+    expect(await run(f, "nope", {}, fb)).toBe("app");
+    expect(await run(f, "constructor", {}, fb)).toBe("app");
+    expect(fb).toHaveBeenCalledTimes(2);
+  });
+
+  test("search_files falls through when not registered", async () => {
+    const f = fileOperations({ providers: [tree()] });
+    expect(await run(f, "search_files", {})).toBe("app");
+  });
+});
