@@ -155,7 +155,7 @@ Returns `{ operations, wrap(executor) }`. `files` is the list of `FileProvider`s
 
 Ids returned to the agent are `<provider key>:<id>`. A failing provider is skipped on search and get; the log carries only the error's name. If a provider failed and nothing was found, the call throws `Skill providers are unavailable (<keys>); try again.` instead of reporting no match.
 
-`use_skill` returns the `Skill` with its `id` namespaced as `<provider key>:<id>`. The text the agent reads is `SKILL.md` verbatim; then each included file under `--- included: <path> ---`; then a footer, `--- files (<skill uri>) ---`, with the manifest (path, size, lines, description), `N more` when `moreFiles` is set, the refs table (`<raw> → <uri>`), any `notice` lines, and a line saying relative paths resolve against the file that contains them.
+`use_skill` returns the `Skill` with its `id` namespaced as `<provider key>:<id>`. The text the agent reads is `SKILL.md` verbatim; then each included file under `--- included: <path> ---`; then a footer, `--- files (<skill uri>) ---`, with the manifest (path, size, lines, description), `N more` when `moreFiles` is set, the refs table (`<raw> → <uri>`), any `notice` lines, a line saying relative links in `SKILL.md` resolve against the skill uri, and a line saying to read a listed file with `<prefix>read_file { path: "<path as listed above>", base: "<skill uri>" }`.
 
 ## Files
 

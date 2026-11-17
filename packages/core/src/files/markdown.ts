@@ -1,4 +1,5 @@
 import { parseFrontmatter } from "./frontmatter";
+import { splitLines } from "./lines";
 
 export interface MarkdownChunk {
   from: number;
@@ -45,7 +46,14 @@ function oneLine(text: string): string {
     : flat;
 }
 
-/** One-line description: frontmatter description, else first `# ` heading, else first non-empty line. */
+/** Heading text without the opening `#`s or a closing `#` sequence. */
+const headingText = (line: string): string =>
+  line
+    .replace(/^ {0,3}#{1,6}/, "")
+    .replace(/(?:^|\s)#+\s*$/, "")
+    .trim();
+
+/** One-line description: frontmatter description, else first heading (any level), else first non-empty line. */
 export function describeMarkdown(text: string): string {
   const fm = parseFrontmatter(text);
   const description = fm?.folded.includes("description")
@@ -55,8 +63,8 @@ export function describeMarkdown(text: string): string {
   const lines = (fm ? fm.body : text).split(/\r?\n/);
   const heads = headingLines(lines);
   for (let i = 0; i < lines.length; i++) {
-    const m = heads[i] ? /^ {0,3}#\s+(.*)$/.exec(lines[i] as string) : null;
-    if (m) return oneLine(m[1] as string);
+    const text = heads[i] ? headingText(lines[i] as string) : "";
+    if (text) return oneLine(text);
   }
   const first = lines.find((l) => l.trim());
   return first ? oneLine(first) : "";
@@ -67,10 +75,9 @@ export function chunkMarkdown(
   text: string,
   opts: { by: "heading" | "lines"; size?: number },
 ): MarkdownChunk[] {
-  if (!text) return [];
-  const lines = text.split("\n");
-  // A trailing newline ends the last line; it does not start another.
-  if (lines.at(-1) === "") lines.pop();
+  // Same line rule as read_file: no phantom line after a trailing newline.
+  const lines = splitLines(text);
+  if (!lines.length) return [];
   const starts: number[] = [0];
   if (opts.by === "lines") {
     const size = Math.max(1, Math.floor(opts.size ?? 40));

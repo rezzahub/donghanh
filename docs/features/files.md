@@ -74,7 +74,7 @@ Implementer rules:
 - **`grep_files` is for exact strings and names; `search_files` is for concepts.** The engine supplies a default `grep` over `list` and `read`. Override `grep` only for speed.
 - **`search` is a hook, not an index.** donghanh does not build one: it only sees tool calls, not your own writes, so it cannot keep an index fresh. If you provide `search`: stamp each hit with the `version` (revision) it was indexed at, and drop hits whose file has a newer version; filter results by the caller's access before returning them (an index that ignores access leaks files); and return `lines` as `[from, to]` so the agent's next call is `read_file` with `offset`. `chunkMarkdown` gives chunk line ranges that match what `read_file` pages by.
 
-`staticFiles(scheme, tree)` is an in-memory provider over `Record<path, string | { url, mime, bytes }>`; the tree key is the path after `scheme://`. It is a test fixture and the right provider for files bundled with the app.
+`staticFiles(scheme, tree)` is an in-memory provider over `Record<path, string | { url, mime, bytes }>`; the tree key is the path after `scheme://`. Its roots are the top-level folders, plus any top-level file as a file entry. It is a test fixture and the right provider for files bundled with the app.
 
 ## Wiring
 
@@ -131,5 +131,5 @@ All pure, no I/O.
 - `extractRefs(markdown, baseUri)`: `{ raw, uri }[]` for relative and `scheme://` link and image targets. Skips `http(s)` links, `#anchors` and code. `raw` is the target as written; `uri` comes from `resolveRef`.
 - `absolutizeRefs(markdown, baseUri)`: a copy of the Markdown with those targets made absolute. Unlike `resolveRef`, targets stay percent-encoded and keep their `#fragment`, so the links remain valid Markdown. For hosts that render the Markdown to people. Never apply it to text the agent receives; the agent should see the links as written.
 - `chunkMarkdown(text, { by: "heading" | "lines", size? })`: chunks with `{ from, to, text }` line ranges that match what `read_file` pages by. For indexers.
-- `describeMarkdown(text)`: the frontmatter `description`, else the first `#` heading, else the first non-empty line, as one line of at most 160 characters.
+- `describeMarkdown(text)`: the frontmatter `description`, else the text of the first heading of any level (`#` to `######`, outside code fences, without the `#` markup), else the first non-empty line, as one line of at most 160 characters.
 - `parseFrontmatter(md)`: `{ fields, metadata, folded, body }` or `null` when there is no `---` block.

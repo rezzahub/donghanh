@@ -19,6 +19,14 @@ describe("describeMarkdown", () => {
     expect(describeMarkdown("intro\n# Title\n")).toBe("Title");
     expect(describeMarkdown("\n\nfirst line\nsecond")).toBe("first line");
   });
+  it("uses the first heading of any level, without its markup", () => {
+    expect(describeMarkdown("## Foo\nbody\n")).toBe("Foo");
+    expect(describeMarkdown("intro\n### Bar ###\n# Later\n")).toBe("Bar");
+    expect(describeMarkdown("###### Six\n")).toBe("Six");
+    expect(describeMarkdown("# C#\n")).toBe("C#");
+    expect(describeMarkdown("```\n## no\n```\n## yes\n")).toBe("yes");
+    expect(describeMarkdown("####### seven\n")).toBe("####### seven");
+  });
   it("ignores headings in code fences", () => {
     expect(describeMarkdown("```\n# no\n```\n# yes\n")).toBe("yes");
   });
@@ -48,6 +56,17 @@ describe("chunkMarkdown", () => {
   });
   it("returns [] for empty text", () => {
     expect(chunkMarkdown("", { by: "heading" })).toEqual([]);
+  });
+  it("splits lines like read_file: one blank line for a lone newline, no CR", () => {
+    expect(chunkMarkdown("\n", { by: "heading" })).toEqual([
+      { from: 1, to: 1, text: "" },
+    ]);
+    expect(chunkMarkdown("\r\n", { by: "lines" })).toEqual([
+      { from: 1, to: 1, text: "" },
+    ]);
+    expect(chunkMarkdown("# A\r\nx\r\n", { by: "heading" })).toEqual([
+      { from: 1, to: 2, text: "# A\nx" },
+    ]);
   });
   it("does not count a trailing newline as a line", () => {
     expect(chunkMarkdown("a\n", { by: "heading" })).toEqual([

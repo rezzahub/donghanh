@@ -104,6 +104,23 @@ describe("staticFiles", () => {
       "s://b/",
     ]);
   });
+  it("a top-level file is a file root that stat, read and list agree on", async () => {
+    const docs = staticFiles("docs", { "README.md": "# Hi\n", "a/b.md": "x" });
+    const roots = await listFiles([docs], {}, ctx);
+    expect(roots.entries.map((e) => [e.uri, e.kind])).toEqual([
+      ["docs://README.md", "file"],
+      ["docs://a/", "dir"],
+    ]);
+    expect(roots.entries[0]).toMatchObject({ description: "Hi", lines: 1 });
+    for (const e of roots.entries) {
+      const listed = await listFiles([docs], { uri: e.uri }, ctx);
+      expect(listed.entries.length).toBeGreaterThan(0);
+    }
+    expect(await docs.stat("docs://README.md", ctx)).toMatchObject({
+      kind: "file",
+    });
+    expect((await docs.read("docs://README.md", ctx))?.text).toBe("# Hi\n");
+  });
   it("stat and read return null outside its tree", async () => {
     expect(await p.stat("s://zzz.md", ctx)).toBeNull();
     expect(await p.read("s://zzz.md", ctx)).toBeNull();

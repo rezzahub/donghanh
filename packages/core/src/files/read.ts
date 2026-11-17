@@ -143,16 +143,19 @@ export async function readFile(
       : all.slice(start - 1, start - 1 + size);
     from = start;
   }
-  let anyCut = false;
-  const cutLines = chosen.map((l) => {
-    const c = cut(l);
-    anyCut ||= c.cut;
-    return c.line;
-  });
-  const requested = cutLines.length;
-  const out = fit(cutLines, tail !== undefined);
+  const cuts = chosen.map(cut);
+  const requested = cuts.length;
+  const out = fit(
+    cuts.map((c) => c.line),
+    tail !== undefined,
+  );
   if (tail !== undefined) from += requested - out.length;
-  const fitted = out;
+  // Only lines that made it onto the page count as cut.
+  const kept =
+    tail !== undefined
+      ? cuts.slice(requested - out.length)
+      : cuts.slice(0, out.length);
+  const anyCut = kept.some((c) => c.cut);
 
   const to = from + out.length - 1;
   const result: ReadResult = {
@@ -162,7 +165,7 @@ export async function readFile(
     lines: { from, to, total },
   };
 
-  let truncated = anyCut || fitted.length < requested;
+  let truncated = anyCut || out.length < requested;
   if (tail === undefined) {
     if (out.length > 0 && to < total) {
       result.next = {
@@ -172,7 +175,7 @@ export async function readFile(
       };
       truncated = true;
     }
-  } else if (from > 1 && fitted.length < count(tail)) {
+  } else if (from > 1 && out.length < count(tail)) {
     truncated = true;
   }
   if (truncated) result.truncated = true;

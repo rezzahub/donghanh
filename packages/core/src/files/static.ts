@@ -142,11 +142,17 @@ export function staticFiles(
   return {
     scheme,
     roots: async () => {
-      const firsts = [...new Set(paths.map((k) => k.split("/")[0] as string))];
-      return firsts.map((f) => ({
-        uri: `${prefix}${f}/`,
-        kind: "dir" as const,
-      }));
+      const roots = new Map<string, FileEntry>();
+      for (const key of paths) {
+        const first = key.split("/")[0] as string;
+        // A top-level file is a file root, not a folder.
+        const entry: FileEntry =
+          first === key
+            ? fileEntry(key)
+            : { uri: `${prefix}${first}/`, kind: "dir" };
+        if (!roots.has(entry.uri)) roots.set(entry.uri, entry);
+      }
+      return [...roots.values()];
     },
     stat,
     list,

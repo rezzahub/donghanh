@@ -188,7 +188,8 @@ export function renderSkillBrief(skill: Skill, prefix: string): string {
     foot.push(`${line}; read it with ${prefix}read_file.`);
   }
   foot.push(
-    `Relative paths resolve against the file that contains them; read files with ${prefix}read_file { uri }.`,
+    `Relative links in SKILL.md resolve against its uri, ${uri}; links in other files resolve against the file that contains them.`,
+    `Read a listed file with ${prefix}read_file { path: "<path as listed above>", base: "${uri}" }.`,
   );
   return `${out.join("\n")}\n\n${foot.join("\n")}`;
 }

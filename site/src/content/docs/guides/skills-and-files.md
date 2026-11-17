@@ -62,7 +62,7 @@ metadata:
 
 ## Make files easy to choose
 
-The file list shows each file's size, line count and a one-line description, so the agent can choose without opening it. The description comes from the file itself: the `description` in its frontmatter, else its first heading, else its first non-empty line. Start every reference file with one of these:
+The file list shows each file's size, line count and a one-line description, so the agent can choose without opening it. The description comes from the file itself: the `description` in its frontmatter, else its first heading of any level (`#` to `######`), else its first non-empty line. Start every reference file with one of these:
 
 ```markdown
 # EU pricing
@@ -70,7 +70,7 @@ The file list shows each file's size, line count and a one-line description, so 
 VAT-inclusive prices and the three countries with a price floor.
 ```
 
-A file that opens with a table or an unlabeled paragraph is listed by that line, which tells the agent nothing.
+A file with no `description` and no heading is listed by its first non-empty line, such as a table row or the start of a paragraph, which tells the agent nothing.
 
 Keep `SKILL.md` short. It is read in full on every use. Put the steps and the decisions in it, and move detail into references that the agent opens when the step needs them.
 

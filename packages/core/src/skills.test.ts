@@ -865,7 +865,13 @@ describe("use_skill files", () => {
       { prefix: "mt_" },
     );
     const skill = await use();
-    expect(renderSkillBrief(skill, "mt_")).toContain("mt_read_file { uri }");
+    const brief = renderSkillBrief(skill, "mt_");
+    expect(brief).toContain(
+      'Read a listed file with mt_read_file { path: "<path as listed above>", base: "skills://k/s/SKILL.md" }.',
+    );
+    expect(brief).toContain(
+      "Relative links in SKILL.md resolve against its uri, skills://k/s/SKILL.md;",
+    );
     const node = JSON.stringify(
       s.operations.mt_use_skill({ data: skill, variables: {} }),
     );

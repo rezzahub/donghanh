@@ -92,6 +92,23 @@ describe("readFile", () => {
     expect(all.next).toBeUndefined();
   });
 
+  it("lineCut is not set when the cut line was dropped by the byte cap", async () => {
+    const rows = Array.from(
+      { length: 10 },
+      (_, i) => `${i}${"w".repeat(1500)}`,
+    );
+    const lp = staticFiles("c", {
+      "f.md": `${[...rows, "z".repeat(5000)].join("\n")}\n`,
+    });
+    const r = await readFile([lp], { uri: "c://f.md" }, ctx);
+    expect(r.lines).toEqual({ from: 1, to: 10, total: 11 });
+    expect(r.text).toBe(rows.join("\n"));
+    expect(r.lineCut).toBeUndefined();
+    expect(r.next).toEqual({ uri: "c://f.md", offset: 11 });
+    const last = await readFile([lp], { uri: "c://f.md", offset: 11 }, ctx);
+    expect(last.lineCut).toBe(true);
+  });
+
   it("empty file has zero lines", async () => {
     const r = await readFile([p], { uri: "t://f/empty.md" }, ctx);
     expect(r.lines?.total).toBe(0);
