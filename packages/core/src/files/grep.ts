@@ -19,6 +19,30 @@ export interface GrepResult {
 }
 
 const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+/**
+ * Keep at most `budget` UTF-8 bytes of `text`, cutting on a character
+ * boundary and dropping the partial last line.
+ */
+function withinBudget(
+  text: string,
+  budget: number,
+): { text: string; bytes: number; truncated: boolean } {
+  const buf = encoder.encode(text);
+  if (buf.length <= budget) {
+    return { text, bytes: buf.length, truncated: false };
+  }
+  let end = budget;
+  while (end > 0 && ((buf[end] as number) & 0xc0) === 0x80) end--;
+  const kept = decoder.decode(buf.subarray(0, end));
+  const lastNewline = kept.lastIndexOf("\n");
+  return {
+    text: lastNewline < 0 ? "" : kept.slice(0, lastNewline + 1),
+    bytes: end,
+    truncated: true,
+  };
+}
 const PAGE = 500;
 // listFiles clamps depth only from below, so this is effectively unlimited.
 const DEPTH = 1_000_000;
@@ -123,8 +147,10 @@ export async function grepFiles(
     const file = files[i] as string;
     const content = await firstFrom(providers, file, (p) => p.read(file, ctx));
     if (!content || content.url || content.text === undefined) continue;
-    bytes += encoder.encode(content.text).length;
-    const lines = splitLines(content.text).map(cutLine);
+    const fit = withinBudget(content.text, FILE_LIMITS.grepBytes - bytes);
+    bytes += fit.bytes;
+    if (fit.truncated) capped = true;
+    const lines = splitLines(fit.text).map(cutLine);
     for (let n = 0; n < lines.length; n++) {
       if (!re.test(lines[n] as string)) continue;
       if (hits.length >= limit) return { hits, capped: true };
@@ -136,6 +162,7 @@ export async function grepFiles(
         after: lines.slice(n + 1, n + 1 + context),
       });
     }
+    if (fit.truncated) return { hits, capped: true };
   }
   return { hits, capped };
 }

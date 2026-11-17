@@ -113,16 +113,43 @@ describe("grepFiles", () => {
     expect(r.capped).toBe(true);
   });
 
-  it("stops at the 2 MB budget and reports capped", async () => {
-    const big = `${"a".repeat(1000)}\n`.repeat(1500);
-    const p = staticFiles("t", { "d/a.md": big, "d/b.md": big, "d/c.md": big });
-    const r = await grepFiles([p], { pattern: "zzz", uri: "t://d/" }, ctx);
+  it("scans at most 2 MB in total across files", async () => {
+    const filler = `${"a".repeat(1000)}\n`.repeat(1500);
+    const p = staticFiles("t", {
+      "d/a.md": `markA\n${filler}`,
+      "d/b.md": `markB\n${filler}markB2\n`,
+      "d/c.md": `markC\n${filler}`,
+    });
+    const r = await grepFiles([p], { pattern: "mark", uri: "t://d/" }, ctx);
+    expect(r.hits.map((h) => h.text)).toEqual(["markA", "markB"]);
+    expect(r.capped).toBe(true);
+  });
+
+  it("truncates a single huge file at 2 MB", async () => {
+    const filler = `${"a".repeat(1000)}\n`.repeat(2500);
+    const p = staticFiles("t", { "d/a.md": `early\n${filler}late\n` });
+    const r = await grepFiles(
+      [p],
+      { pattern: "early|late", uri: "t://d/" },
+      ctx,
+    );
+    expect(r.hits.map((h) => h.text)).toEqual(["early"]);
+    expect(r.capped).toBe(true);
+  });
+
+  it("truncates on a UTF-8 boundary", async () => {
+    const p = staticFiles("t", { "d/a.md": `${"é".repeat(1100000)}\n` });
+    const r = await grepFiles([p], { pattern: "\uFFFD", uri: "t://d/" }, ctx);
     expect(r.hits).toEqual([]);
     expect(r.capped).toBe(true);
-    const two = staticFiles("t", { "d/a.md": big });
-    expect(
-      (await grepFiles([two], { pattern: "zzz", uri: "t://d/" }, ctx)).capped,
-    ).toBe(false);
+  });
+
+  it("a total under 2 MB is not capped", async () => {
+    const p = staticFiles("t", {
+      "d/a.md": `${"a".repeat(1000)}\n`.repeat(1500),
+    });
+    const r = await grepFiles([p], { pattern: "zzz", uri: "t://d/" }, ctx);
+    expect(r.capped).toBe(false);
   });
 
   it("skips binary entries", async () => {
@@ -199,5 +226,53 @@ describe("grepFiles", () => {
       ctx,
     ).catch((e: Error) => e);
     expect((err as Error).message).not.toContain("secret-token");
+  });
+
+  describe("a failing provider among several", () => {
+    const tree = { "d/a.md": "needle\n" };
+    const boom = () => {
+      throw new Error("secret-token");
+    };
+    const noLeak = () =>
+      expect(JSON.stringify(errors.mock.calls)).not.toContain("secret-token");
+
+    it("falls back to the good provider when read throws", async () => {
+      const bad: FileProvider = { ...staticFiles("t", tree), read: boom };
+      const good = staticFiles("t", tree);
+      const r = await grepFiles(
+        [bad, good],
+        { pattern: "needle", uri: "t://d/" },
+        ctx,
+      );
+      expect(r.hits.map((h) => h.uri)).toEqual(["t://d/a.md"]);
+      expect(errors).toHaveBeenCalled();
+      noLeak();
+    });
+
+    it("falls back to the good provider when list throws", async () => {
+      const bad: FileProvider = { ...staticFiles("t", tree), list: boom };
+      const good = staticFiles("t", tree);
+      const r = await grepFiles(
+        [bad, good],
+        { pattern: "needle", uri: "t://d/" },
+        ctx,
+      );
+      expect(r.hits.map((h) => h.uri)).toEqual(["t://d/a.md"]);
+      expect(errors).toHaveBeenCalled();
+      noLeak();
+    });
+
+    it("falls back to the scan when a native grep throws", async () => {
+      const bad: FileProvider = { ...staticFiles("t", tree), grep: boom };
+      const good = staticFiles("t", tree);
+      const r = await grepFiles(
+        [bad, good],
+        { pattern: "needle", uri: "t://d/" },
+        ctx,
+      );
+      expect(r.hits.map((h) => h.uri)).toEqual(["t://d/a.md"]);
+      expect(errors).toHaveBeenCalled();
+      noLeak();
+    });
   });
 });
