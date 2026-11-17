@@ -89,6 +89,7 @@ Read by: the model after it picked the tool but before calling. In MCP, appended
 - State required side tasks: `"Always include tags. Confirm before calling."`
 - Describe what the response gives you back: `"Response includes updated balances."`
 - Error recovery: `"On error, data may not be up to date — re-query balances and retry."`
+- A paged or capped tool states its cap and what to do when the result is truncated: `"Reads are paged (first 200 lines); when truncated, call again with the exact next arguments shown."`
 - Keep to 1-3 sentences. Detailed schema lives in `input`.
 
 **Real examples:**
@@ -228,6 +229,7 @@ Every tool result includes a rendered `Brief`. Its `Message` text is literal ins
 - How to narrate server-enriched fields: `"display contains pre-rendered text — use as suggested wording, adapt tone, keep amounts/names accurate."`
 - Mode disambiguation: `"Debts are in simplified mode — to see exact pairwise debts, the owner can switch to standard mode via update-group."`
 - Error recovery hints: `"On error, data may not be up to date — re-query balances and retry."`
+- Hand over the next call. When the result is one page of many or points at other things, carry the arguments for the next call in the result (`next: { uri, offset }`, a `refs` table of link to uri, a manifest of files) so the model copies them and never builds a path or an offset itself.
 
 **Action patterns:**
 - Pre-fill all variables the next call will need (including the latest `version` for optimistic locking).
@@ -235,6 +237,16 @@ Every tool result includes a rendered `Brief`. Its `Message` text is literal ins
 - Filter dynamically — only show actions that make sense for *this* user and *this* state.
 
 Because this text ships with every tool response, you can evolve behavior by shipping new operation components — no prompt edits, no deploys beyond your normal release.
+
+### Errors that teach
+
+An error is a response the model reads next, so make it say what to pass instead, not only what went wrong. Name the missing argument and where its value comes from:
+
+```
+Relative path "references/x.md" needs base — pass the uri of the file that links it (use_skill returns it).
+```
+
+Compare `"Invalid input"`, which leaves the model to guess. An unknown id should say which tool lists valid ones (`"No file at <uri>; call list_files to browse."`).
 
 ## 6. Widget description (Apps SDK)
 
@@ -286,6 +298,9 @@ Since ChatGPT discovers tools by metadata similarity to user prompts:
 | "Use version=${data.version} next." | Response Brief `Message` (dynamic) |
 | "If debts exist, ask to settle." | Response Brief `Message` |
 | Suggested next actions with pre-filled args | Response Brief `Action` nodes |
+| "Reads are paged; when truncated, follow `next`." | `instruction` on the paged op (state the cap and the recovery) |
+| The next page's `uri` and `offset`, a `refs` table, a file manifest | Response data and Brief (`next`, `refs`, manifest), not the model's own arithmetic |
+| "Relative path needs base — pass the uri of the file that links it." | The error message (an error that says what to pass instead) |
 | Imperative user-first button labels | `Action` `label` prop |
 
 ## Common mistakes
@@ -297,6 +312,7 @@ Since ChatGPT discovers tools by metadata similarity to user prompts:
 - Forgetting that `instruction` is concatenated with `description` in MCP — don't repeat.
 - Treating `Message` as user-facing copy. It's model narration that *becomes* user-facing after the model rewrites it.
 - Putting secrets or internal identifiers in any of these fields — they all go to the model.
+- Making the model construct arguments the server could hand it (a path, an offset, a cursor, a resolved uri). Return them in the result (`next`, `refs`, a manifest) and let the model copy.
 
 ## References
 

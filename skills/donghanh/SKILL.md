@@ -1,6 +1,6 @@
 ---
 name: donghanh
-description: Build conversational apps with donghanh — JSX primitives, operations, executor, and adapters for ChatGPT Apps SDK (MCP), self-hosted React chat, and GPT Store (deprecated). Use when the user wants to create operations, wire an adapter, build widgets, or scaffold a donghanh app.
+description: Build conversational apps with donghanh — JSX primitives, operations, executor, and adapters for ChatGPT Apps SDK (MCP), self-hosted React chat, and GPT Store (deprecated). Use when the user wants to create operations, wire an adapter, build widgets, scaffold a donghanh app, or expose skills or files to the agent (skillOperations, fileOperations).
 ---
 
 # donghanh
@@ -239,6 +239,23 @@ donghanh help
 - **structuredContent = authoritative**: always return updated snapshot on mutations so widget re-renders from truth.
 - **_meta is widget-only**: never visible to model. Don't put narration there.
 
+## Files and skills
+
+Add `fileOperations` (`@donghanh/core/files`) when the agent must list, read in pages or grep files: docs, transcripts, or the folders skills bring with them. `skillOperations({ providers, files })` takes the file providers, and `use_skill` then returns the skill's manifest, the files its `metadata.include` names, and a table of resolved links.
+
+```ts
+const files = fileOperations({ providers: [docs] }); // same prefix as skillOperations
+App({ operations: { ...ops, ...skills.operations, ...files.operations }, instructions });
+mcpRoutes({
+  registry,
+  executor: files.wrap(skills.wrap(executor)),
+  instructionsSuffix: files.instructions, // appended only when the app has instructions
+  /* ... */
+});
+```
+
+A host that wraps the engine in its own operations (`readFile`, `listFiles`, `grepFiles`) includes `FILES_INSTRUCTIONS` in its own `instructions`. A `FileProvider` returns `null` for both "missing" and "not allowed". For the contract, the caps and the implementer rules see `docs/features/files.md`; skill authors want the guide `donghanh.dev/guides/skills-and-files`.
+
 ## References
 
 Up-to-date API docs for every package:
@@ -270,3 +287,6 @@ Apps SDK protocol docs:
 - Returning 401 instead of success + `_meta["mcp/www_authenticate"]` → OAuth UI never appears
 - Mutating `structuredContent` shape across calls → widget can't diff reliably
 - Using `localStorage` for widget state → gets cleared; use `window.openai.setWidgetState` or `ui/update-model-context`
+- Returning a whole large file from an operation (a transcript, a doc) → fills the agent's context; page it and cap it, or use the file tools (`read_file`, `grep_files`)
+- `fileOperations` with a different `prefix` than `skillOperations` → the `use_skill` footer names tools that do not exist
+- Flat top-level `include:` in a SKILL.md → ignored; `include` goes in the nested `metadata:` block
