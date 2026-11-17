@@ -7,6 +7,14 @@ describe("describeMarkdown", () => {
       "Hi there",
     );
   });
+  it("skips a folded or literal frontmatter description", () => {
+    expect(
+      describeMarkdown("---\ndescription: >-\n  long\n  text\n---\n# Real\n"),
+    ).toBe("Real");
+    expect(describeMarkdown("---\ndescription: |\n  x\n---\nbody line\n")).toBe(
+      "body line",
+    );
+  });
   it("falls back to the first heading, then first line", () => {
     expect(describeMarkdown("intro\n# Title\n")).toBe("Title");
     expect(describeMarkdown("\n\nfirst line\nsecond")).toBe("first line");
@@ -40,5 +48,25 @@ describe("chunkMarkdown", () => {
   });
   it("returns [] for empty text", () => {
     expect(chunkMarkdown("", { by: "heading" })).toEqual([]);
+  });
+  it("does not count a trailing newline as a line", () => {
+    expect(chunkMarkdown("a\n", { by: "heading" })).toEqual([
+      { from: 1, to: 1, text: "a" },
+    ]);
+    const c = chunkMarkdown("a\nb\n", { by: "lines", size: 1 });
+    expect(c.map((k) => [k.from, k.to])).toEqual([
+      [1, 1],
+      [2, 2],
+    ]);
+    expect(chunkMarkdown("a\nb\n", { by: "heading" }).at(-1)?.to).toBe(2);
+  });
+  it("handles CRLF and no trailing newline", () => {
+    expect(chunkMarkdown("a\r\n", { by: "heading" }).at(-1)?.to).toBe(1);
+    const c = chunkMarkdown("# A\r\nx\r\n# B\r\ny\r\n", { by: "heading" });
+    expect(c.map((k) => [k.from, k.to])).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+    expect(chunkMarkdown("a\nb", { by: "heading" }).at(-1)?.to).toBe(2);
   });
 });

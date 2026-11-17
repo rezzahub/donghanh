@@ -48,7 +48,9 @@ function oneLine(text: string): string {
 /** One-line description: frontmatter description, else first `# ` heading, else first non-empty line. */
 export function describeMarkdown(text: string): string {
   const fm = parseFrontmatter(text);
-  const description = fm?.fields.description;
+  const description = fm?.folded.includes("description")
+    ? undefined
+    : fm?.fields.description;
   if (description) return oneLine(description);
   const lines = (fm ? fm.body : text).split(/\r?\n/);
   const heads = headingLines(lines);
@@ -67,6 +69,8 @@ export function chunkMarkdown(
 ): MarkdownChunk[] {
   if (!text) return [];
   const lines = text.split("\n");
+  // A trailing newline ends the last line; it does not start another.
+  if (lines.at(-1) === "") lines.pop();
   const starts: number[] = [0];
   if (opts.by === "lines") {
     const size = Math.max(1, Math.floor(opts.size ?? 40));
