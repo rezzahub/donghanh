@@ -55,7 +55,7 @@ interface FileProvider {
   stat(uri, ctx): Promise<FileEntry | null>;
   list(uri, o: { depth: number; glob?: string; limit: number; after?: string }, ctx): Promise<{ entries: FileEntry[]; next?: string }>;
   read(uri, ctx): Promise<FileContent | null>;
-  readLines?(uri, range: { from: number; to: number }, ctx): Promise<FileContent | null>;
+  readLines?(uri, range: { from: number; to: number }, ctx): Promise<(FileContent & { totalLines: number }) | null>;
   grep?(args, ctx): Promise<GrepHit[]>;
   search?(query, o: { uri?: string; limit: number }, ctx): Promise<SearchHit[]>;
 }
@@ -66,7 +66,7 @@ interface FileProvider {
 Implementer rules:
 
 - **Not found is not forbidden.** Return `null` for a file the caller cannot read, exactly as for a file that does not exist. Never signal "forbidden"; it leaks that the file exists. `stat`, `read` and `readLines` all follow this. Authorize in the provider, as the caller (`ctx.userId`).
-- **Return whole text from `read`; the engine slices and caps.** Add `readLines` only when you can slice cheaply (a database range, an object store range request). It takes a 1-based inclusive range. Return `null` only for a missing file; for a range at or past the end return empty `text` and `totalLines`.
+- **Return whole text from `read`; the engine slices and caps.** Add `readLines` only when you can slice cheaply (a database range, an object store range request). It takes a 1-based inclusive range and must return `totalLines`, the file's line count, so `lines.total` and `next` are exact. Return `null` only for a missing file; for a range at or past the end return empty `text` and `totalLines`. A `readLines` result without a numeric `totalLines` is ignored and the engine calls `read` instead.
 - **Page and cap; never return a whole large file from an operation.** If you wrap the engine in your own operations, or write an operation that reads files, go through `readFile` (or give the agent the file tools) so the caps and `next` apply. A tool result that is a 400 KB transcript fills the agent's context.
 - **Binary files get a signed URL.** Return `url` (short-lived, signed) with `mime` and `bytes` and no `text`. The agent never receives bytes.
 - **Fill `bytes`, `lines` and `description` when it is cheap**, so `list_files` lets the agent choose without reading. They are optional; omit them when one query cannot supply them. `describeMarkdown` makes the description.

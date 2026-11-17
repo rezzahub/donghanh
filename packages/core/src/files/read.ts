@@ -92,10 +92,18 @@ export async function readFile(
   const explicit = size !== FILE_LIMITS.readLines;
 
   let ranged = false;
-  const content = await firstFrom(providers, uri, (p) => {
+  const content = await firstFrom(providers, uri, async (p) => {
     if (tail === undefined && p.readLines) {
-      ranged = true;
-      return p.readLines(uri, { from: start, to: start + size - 1 }, ctx);
+      const part = await p.readLines(
+        uri,
+        { from: start, to: start + size - 1 },
+        ctx,
+      );
+      // A slice is only usable with the file's total; otherwise read it whole.
+      if (part === null || typeof part.totalLines === "number") {
+        ranged = part !== null;
+        return part;
+      }
     }
     ranged = false;
     return p.read(uri, ctx);
@@ -119,7 +127,9 @@ export async function readFile(
   }
 
   const all = splitLines(content.text);
-  const total = content.totalLines ?? (ranged ? undefined : all.length);
+  const total = ranged
+    ? (content.totalLines as number)
+    : (content.totalLines ?? all.length);
 
   let chosen: string[];
   let from: number;
@@ -145,22 +155,16 @@ export async function readFile(
   const fitted = out;
 
   const to = from + out.length - 1;
-  const known = total ?? to;
   const result: ReadResult = {
     ...base,
     kind: "text",
     text: out.join("\n"),
-    lines: { from, to, total: known },
+    lines: { from, to, total },
   };
 
   let truncated = anyCut || fitted.length < requested;
   if (tail === undefined) {
-    const more =
-      out.length > 0 &&
-      (total !== undefined
-        ? to < total
-        : out.length < requested || (ranged && requested >= size));
-    if (more) {
+    if (out.length > 0 && to < total) {
       result.next = {
         uri,
         offset: to + 1,

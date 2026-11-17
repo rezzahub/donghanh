@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFile } from "./read";
 import { staticFiles } from "./static";
-import type { FileContext, FileProvider } from "./types";
+import type { FileContent, FileContext, FileProvider } from "./types";
 
 const ctx = {} as FileContext;
 const numbered = (n: number) =>
@@ -216,7 +216,7 @@ describe("readFile", () => {
     expect(r.next).toEqual({ uri: "t://f/x.md", offset: 13, limit: 2 });
   });
 
-  it("readLines without totalLines: the byte cap still yields a next, and paging covers every line once", async () => {
+  it("readLines: the byte cap still yields a next, and paging covers every line once", async () => {
     const rows = Array.from(
       { length: 100 },
       (_, i) => `${i}:${"z".repeat(400)}`,
@@ -227,6 +227,7 @@ describe("readFile", () => {
         mime: "text/plain",
         bytes: 1,
         text: `${rows.slice(r.from - 1, r.to).join("\n")}\n`,
+        totalLines: rows.length,
       }),
     );
     const lp: FileProvider = {
@@ -248,6 +249,40 @@ describe("readFile", () => {
       args = r.next;
     }
     expect(seen).toEqual(rows);
+  });
+
+  it("a readLines result without totalLines falls back to read", async () => {
+    const text = numbered(300);
+    const read = vi.fn(async (uri: string) => ({
+      uri,
+      mime: "text/plain",
+      bytes: text.length,
+      text,
+    }));
+    const readLines = vi.fn(
+      async (uri: string, r: { from: number; to: number }) =>
+        ({
+          uri,
+          mime: "text/plain",
+          bytes: 1,
+          text: text
+            .split("\n")
+            .slice(r.from - 1, r.to)
+            .join("\n"),
+        }) as unknown as FileContent & { totalLines: number },
+    );
+    const lp: FileProvider = {
+      scheme: "t",
+      stat: async () => null,
+      list: async () => ({ entries: [] }),
+      read,
+      readLines,
+    };
+    const r = await readFile([lp], { uri: "t://f/x.md" }, ctx);
+    expect(readLines).toHaveBeenCalled();
+    expect(read).toHaveBeenCalled();
+    expect(r.lines).toEqual({ from: 1, to: 200, total: 300 });
+    expect(r.next).toEqual({ uri: "t://f/x.md", offset: 201 });
   });
 
   it("readLines past the end returns empty text with the total, no error", async () => {

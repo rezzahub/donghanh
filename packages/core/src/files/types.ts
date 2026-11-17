@@ -66,15 +66,16 @@ export interface FileProvider {
   list(uri: string, o: ListOptions, ctx: FileContext): Promise<ListResult>;
   read(uri: string, ctx: FileContext): Promise<FileContent | null>;
   /**
-   * Read a 1-based inclusive line range. Return null only when the file does
-   * not exist; for a range at or past the end return an empty `text` and
-   * `totalLines`.
+   * Read a 1-based inclusive line range. `totalLines` (the file's line count)
+   * is required. Return null only when the file does not exist; for a range
+   * at or past the end return an empty `text` and `totalLines`. A result
+   * without a numeric `totalLines` is ignored and the engine calls `read`.
    */
   readLines?(
     uri: string,
     range: { from: number; to: number },
     ctx: FileContext,
-  ): Promise<FileContent | null>;
+  ): Promise<(FileContent & { totalLines: number }) | null>;
   grep?(args: GrepArgs, ctx: FileContext): Promise<GrepHit[]>;
   search?(
     query: string,
