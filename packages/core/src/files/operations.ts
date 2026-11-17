@@ -64,6 +64,8 @@ export function fileOperations(opts: {
   const read = `${prefix}read_file`;
   const grep = `${prefix}grep_files`;
   const search = `${prefix}search_files`;
+  // Name search_files only when it is registered.
+  const finders = searchable ? `${grep} or ${search}` : grep;
 
   const handlers: Record<string, Handler> = {
     async list_files(vars, ctx) {
@@ -174,7 +176,7 @@ export function fileOperations(opts: {
       type: "query",
       title: "List files",
       description: "List files and folders in the mounted file trees.",
-      instruction: `Start with no uri to see the mounted roots, then pass a folder uri. Entries show size, line count and a description so you can choose without reading. depth goes deeper, glob filters paths. When the result names a next cursor, pass it as after to continue. Use ${grep} or ${search} to find content before reading large files.`,
+      instruction: `Start with no uri to see the mounted roots, then pass a folder uri. Entries show size, line count and a description so you can choose without reading. depth goes deeper, glob filters paths. When the result names a next cursor, pass it as after to continue. Use ${finders} to find content before reading large files.`,
       input: {
         type: "object",
         properties: {
@@ -252,7 +254,7 @@ export function fileOperations(opts: {
       type: "query",
       title: "Read file",
       description: "Read a text file by uri, one page at a time.",
-      instruction: `Pass uri, or a relative path together with base (the uri of the file that links it); relative paths without base fail. Reads are paged: the first 200 lines by default. When the result is truncated, call again with the exact next arguments it shows. Use head for the first n lines, tail for the last n, or offset and limit for a window; pass only one of these. Before reading a large file, find the part you need with ${grep} or ${search}. Binary files return their type, size and a url, never content.`,
+      instruction: `Pass uri, or a relative path together with base (the uri of the file that links it); relative paths without base fail. Reads are paged: the first 200 lines by default. When the result is truncated, call again with the exact next arguments it shows. Use head for the first n lines, tail for the last n, or offset and limit for a window; pass only one of these. Before reading a large file, find the part you need with ${finders}. Binary files return their type, size and a url, never content.`,
       input: {
         type: "object",
         properties: {

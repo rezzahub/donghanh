@@ -106,6 +106,21 @@ describe("fileOperations", () => {
     expect(read).toContain("grep_files");
   });
 
+  test("search_files is named only when it is registered", () => {
+    const text = (f: ReturnType<typeof fileOperations>, id: string) =>
+      f.operations[id].operationConfig.instruction ?? "";
+    const plain = fileOperations({ providers: [tree()] });
+    for (const id of ["list_files", "read_file"]) {
+      expect(text(plain, id)).toContain("grep_files");
+      expect(text(plain, id)).not.toContain("search_files");
+    }
+    const withSearch = fileOperations({ providers: [searching()] });
+    for (const id of ["list_files", "read_file"]) {
+      expect(text(withSearch, id)).toContain("grep_files");
+      expect(text(withSearch, id)).toContain("search_files");
+    }
+  });
+
   test("read_file renders numbered lines and a footer with next", async () => {
     const f = fileOperations({ providers: [tree()] });
     const data = await run(f, "read_file", { uri: "t://a/big.md" });
