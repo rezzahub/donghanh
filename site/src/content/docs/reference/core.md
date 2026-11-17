@@ -118,7 +118,7 @@ Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `descript
 - `moreFiles`: how many files the manifest left out; `list_files` with the skill folder's uri shows them.
 - `included`: `{ path, text }[]`, the files named in `metadata.include`, in order.
 - `refs`: `{ raw, uri }[]`, each relative link in `SKILL.md` with its resolved uri.
-- `notice`: one line per include that could not be inlined (over the cap, missing, binary, or a line cut), telling the agent to `read_file` it.
+- `notice`: one line per include that could not be inlined (over the cap, missing, binary, or a line cut), with the reason. The rendered footer adds a pointer to `<prefix>read_file` on each line.
 
 `parseSkillMarkdown(md)` returns `{ name, description, metadata, body }`; `metadata` is read from the indented one-level `metadata:` block of the frontmatter. A flat top-level `include:` is not read.
 
@@ -170,7 +170,7 @@ A generic, paged, read-side file interface over URIs (`scheme://path`). Skills a
 `{ scheme, roots?, stat, list, read, readLines?, grep?, search? }`. `stat`, `read` and `readLines` return `null` for a file that is missing and for one the caller may not read; there is no "forbidden". `read` returns whole text and the engine slices and caps it; `readLines(uri, { from, to })` is an optional cheaper path (1-based, inclusive; `null` only for a missing file, empty `text` plus `totalLines` for a range at or past the end). `grep` is an optional native override of the default scan. `search` is an optional ranked hook; donghanh does not build an index. Several providers may share a scheme: they are tried in order and the first non-null result wins. A provider that throws is skipped; if none answered and one threw, the call throws `File providers are unavailable (<scheme>); try again.` rather than not found.
 
 ### `fileOperations({ providers, prefix?, auth? })`
-Returns `{ operations, wrap(executor), instructions }`. Wire it like `skillOperations`: spread `operations` into `App`, wrap the executor (`files.wrap(skills.wrap(executor))` with skills), and pass `instructionsSuffix: files.instructions` to `mcpRoutes`; the suffix is appended only when the app has `instructions`. Use the same `prefix` as `skillOperations`.
+Returns `{ operations, wrap(executor), instructions }`. Wire it like `skillOperations`: spread `operations` into `App`, wrap the executor (`files.wrap(skills.wrap(executor))` with skills), and pass `instructionsSuffix: files.instructions` to `mcpRoutes`; the suffix is appended only when the app has `instructions`. `instructions` starts with a blank line, so it can be appended as is; with a suffix of your own, pass `` `${mine}${files.instructions}` ``. Use the same `prefix` as `skillOperations`: tool instructions and error messages name the prefixed tools.
 
 | Operation | Input | Purpose |
 |---|---|---|
@@ -197,8 +197,8 @@ The values are exported as `FILE_LIMITS` (which also holds the 32 KB `includeByt
 ### `staticFiles(scheme, tree)`
 In-memory `FileProvider` over `Record<path, string | { url, mime, bytes }>`; the key is the path after `scheme://`. A string is a text file (Markdown files get a `description`), the object form is a binary file served by `url`.
 
-### `FILES_INSTRUCTIONS`
-The one-paragraph app-level instruction `fileOperations` returns as `instructions`. A host that wraps the engine in its own operations includes it in its own `App` instructions.
+### `FILES_INSTRUCTIONS` and `filesInstructions(prefix?)`
+`filesInstructions(prefix)` is the one-paragraph app-level instruction naming `<prefix>list_files` and `<prefix>read_file`; `FILES_INSTRUCTIONS` is `filesInstructions()` with the bare names. Neither has a leading separator. `fileOperations` returns `"\n\n" + filesInstructions(prefix)` as `instructions`. A host that wraps the engine in its own operations includes one of them in its own `App` instructions.
 
 ### Link helpers
 Pure, no I/O.

@@ -112,12 +112,12 @@ app.route(
 
 1. Spread `files.operations` into `App`.
 2. Wrap the executor with `files.wrap(executor)`. It routes the file operation ids to the engine and passes everything else through. With skills too, compose: `files.wrap(skills.wrap(executor))`.
-3. Pass `instructionsSuffix: files.instructions` to `mcpRoutes`. It adds `FILES_INSTRUCTIONS`, one paragraph telling the agent that skills and docs are file trees addressed by URI, that relative paths resolve against the document they appear in, and to start from `list_files` with no uri. `mcpRoutes` appends the suffix only when the app has `instructions`; an app with none sends none.
-4. If you use skills, give `fileOperations` the same `prefix` as `skillOperations`. The footer `use_skill` returns names `<prefix>read_file` and `<prefix>list_files`, so the ids must match.
+3. Pass `instructionsSuffix: files.instructions` to `mcpRoutes`. `files.instructions` is ready to append: a blank line, then `filesInstructions(prefix)`, one paragraph telling the agent that skills and docs are file trees addressed by URI, that relative paths resolve against the document they appear in, and to start from `<prefix>list_files` with no uri. `mcpRoutes` appends the suffix only when the app has `instructions`; an app with none sends none. If you already pass a suffix, append to it: `instructionsSuffix: \`${mine}${files.instructions}\``.
+4. If you use skills, give `fileOperations` the same `prefix` as `skillOperations`. The footer `use_skill` returns names `<prefix>read_file` and `<prefix>list_files`, so the ids must match. Tool instructions, include notices and the errors the file tools return name the prefixed tools as well.
 
 `auth` sets the auth level of the generated operations, as for `skillOperations`.
 
-A host with its own tenancy and authorization wraps the engine functions in its own operations instead. `listFiles`, `readFile`, `grepFiles` and `searchFiles` are plain functions: `readFile(providers, args, ctx)` and so on. Define your own `read_file` that authorizes the scope, then calls `readFile`. In that case there is no `files.instructions` to attach: include `FILES_INSTRUCTIONS` in your own `App` instructions.
+A host with its own tenancy and authorization wraps the engine functions in its own operations instead. `listFiles`, `readFile`, `grepFiles` and `searchFiles` are plain functions: `readFile(providers, args, ctx)` and so on. Define your own `read_file` that authorizes the scope, then calls `readFile`. In that case there is no `files.instructions` to attach: include `FILES_INSTRUCTIONS` (the bare paragraph, no leading separator) in your own `App` instructions, or `filesInstructions(prefix)` when your tool names carry a prefix.
 
 ## Skills on top of files
 

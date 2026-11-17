@@ -117,7 +117,7 @@ async function includes(
       ctx,
     );
     if ("why" in r) {
-      notice.push(`include ${path} ${r.why}; read it with read_file.`);
+      notice.push(`include ${path} ${r.why}`);
       continue;
     }
     used += encoder.encode(r.text).length;
@@ -184,7 +184,9 @@ export function renderSkillBrief(skill: Skill, prefix: string): string {
     );
   }
   for (const r of skill.refs ?? []) foot.push(`${r.raw} → ${r.uri}`);
-  if (skill.notice) foot.push(...skill.notice.split("\n"));
+  for (const line of skill.notice ? skill.notice.split("\n") : []) {
+    foot.push(`${line}; read it with ${prefix}read_file.`);
+  }
   foot.push(
     `Relative paths resolve against the file that contains them; read files with ${prefix}read_file { uri }.`,
   );

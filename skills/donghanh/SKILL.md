@@ -249,12 +249,12 @@ App({ operations: { ...ops, ...skills.operations, ...files.operations }, instruc
 mcpRoutes({
   registry,
   executor: files.wrap(skills.wrap(executor)),
-  instructionsSuffix: files.instructions, // appended only when the app has instructions
+  instructionsSuffix: files.instructions, // starts with a blank line; appended only when the app has instructions
   /* ... */
 });
 ```
 
-A host that wraps the engine in its own operations (`readFile`, `listFiles`, `grepFiles`) includes `FILES_INSTRUCTIONS` in its own `instructions`. A `FileProvider` returns `null` for both "missing" and "not allowed". For the contract, the caps and the implementer rules see `docs/features/files.md`; skill authors want the guide `donghanh.dev/guides/skills-and-files`.
+With a suffix of your own, pass `` `${mine}${files.instructions}` ``. A host that wraps the engine in its own operations (`readFile`, `listFiles`, `grepFiles`) includes `FILES_INSTRUCTIONS` (or `filesInstructions(prefix)`) in its own `instructions`, with its own separator. A `FileProvider` returns `null` for both "missing" and "not allowed". For the contract, the caps and the implementer rules see `docs/features/files.md`; skill authors want the guide `donghanh.dev/guides/skills-and-files`.
 
 ## References
 

@@ -8,10 +8,30 @@ import { readFile } from "./read";
 import { searchFiles } from "./search";
 import type { FileContext, FileProvider } from "./types";
 
-export const FILES_INSTRUCTIONS =
-  "Skills and docs are file trees addressed by URI (scheme://path). " +
-  "Relative paths inside a document resolve against the document (file) they appear in, so pass that file's uri as base with the relative path. " +
-  "Start from list_files with no uri to see what is mounted, then read_file to open files; reads are paged, so follow next when a result is truncated.";
+/**
+ * The paragraph telling the agent how the file tools work, naming the tools
+ * with `prefix`. No leading separator; `fileOperations(...).instructions` is
+ * the suffix-ready form.
+ */
+export function filesInstructions(prefix = ""): string {
+  return (
+    "Skills and docs are file trees addressed by URI (scheme://path). " +
+    "Relative paths inside a document resolve against the document (file) they appear in, so pass that file's uri as base with the relative path. " +
+    `Start from ${prefix}list_files with no uri to see what is mounted, then ${prefix}read_file to open files; reads are paged, so follow next when a result is truncated.`
+  );
+}
+
+/** `filesInstructions()` with the bare tool names. */
+export const FILES_INSTRUCTIONS = filesInstructions();
+
+const TOOL_NAMES =
+  /\b(list_files|read_file|grep_files|search_files|use_skill)\b/g;
+
+/** Rethrow an engine error with the tool names it mentions prefixed. */
+function prefixed(prefix: string, e: unknown): never {
+  if (!prefix || !(e instanceof Error)) throw e;
+  throw new Error(e.message.replace(TOOL_NAMES, `${prefix}$1`));
+}
 
 type Handler = (
   vars: Record<string, unknown>,
@@ -406,7 +426,7 @@ export function fileOperations(opts: {
 
   return {
     operations,
-    instructions: FILES_INSTRUCTIONS,
+    instructions: `\n\n${filesInstructions(prefix)}`,
     wrap(executor) {
       return (operationId, variables, context) => {
         const name = operationId.startsWith(prefix)
@@ -421,7 +441,7 @@ export function fileOperations(opts: {
             userId: context.userId,
             request: context.request,
             ...(context.intent !== undefined && { intent: context.intent }),
-          });
+          }).catch((e: unknown) => prefixed(prefix, e));
         }
         return executor(operationId, variables, context);
       };

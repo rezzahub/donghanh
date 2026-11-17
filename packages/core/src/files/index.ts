@@ -9,7 +9,11 @@ export type { ListArgs } from "./list";
 export { listFiles } from "./list";
 export type { MarkdownChunk } from "./markdown";
 export { chunkMarkdown, describeMarkdown } from "./markdown";
-export { FILES_INSTRUCTIONS, fileOperations } from "./operations";
+export {
+  FILES_INSTRUCTIONS,
+  fileOperations,
+  filesInstructions,
+} from "./operations";
 export type { ReadArgs, ReadResult } from "./read";
 export { readFile } from "./read";
 export { absolutizeRefs, extractRefs, resolveRef, uriScheme } from "./refs";

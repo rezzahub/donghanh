@@ -1,6 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
 import type { Executor } from "../types";
-import { FILES_INSTRUCTIONS, fileOperations, staticFiles } from "./index";
+import {
+  FILES_INSTRUCTIONS,
+  fileOperations,
+  filesInstructions,
+  staticFiles,
+} from "./index";
 import type { FileProvider } from "./types";
 
 const ctx = { userId: "u1", request: new Request("http://x/") };
@@ -90,11 +95,52 @@ describe("fileOperations", () => {
     expect(props("search_files").query.type).toBe("string");
   });
 
-  test("instructions equal FILES_INSTRUCTIONS and mention relative paths", () => {
+  test("instructions are suffix-ready: a blank line, then FILES_INSTRUCTIONS", () => {
     const f = fileOperations({ providers: [tree()] });
-    expect(f.instructions).toBe(FILES_INSTRUCTIONS);
+    expect(f.instructions).toBe(`\n\n${FILES_INSTRUCTIONS}`);
+    expect(f.instructions.startsWith("\n\n")).toBe(true);
     expect(f.instructions).toContain("relative");
     expect(f.instructions).toContain("list_files");
+  });
+
+  test("filesInstructions names the prefixed tools; FILES_INSTRUCTIONS is bare", () => {
+    expect(filesInstructions()).toBe(FILES_INSTRUCTIONS);
+    expect(filesInstructions("")).toBe(FILES_INSTRUCTIONS);
+    expect(FILES_INSTRUCTIONS.startsWith("\n")).toBe(false);
+    const kb = filesInstructions("kb_");
+    expect(kb).toContain("kb_list_files");
+    expect(kb).toContain("kb_read_file");
+    expect(kb).not.toMatch(/(?<![\w])(list_files|read_file)\b/);
+    const f = fileOperations({ providers: [tree()], prefix: "kb_" });
+    expect(f.instructions).toBe(`\n\n${kb}`);
+  });
+
+  test("engine errors name the prefixed tools", async () => {
+    const f = fileOperations({ providers: [tree()], prefix: "kb_" });
+    const message = (id: string, vars: Record<string, unknown>) =>
+      run(f, id, vars).then(
+        () => "",
+        (e: Error) => e.message,
+      );
+    const errors = [
+      await message("kb_read_file", { uri: "t://a/nope.md" }),
+      await message("kb_read_file", { path: "x.md" }),
+      await message("kb_list_files", { uri: "t://nope/" }),
+      await message("kb_grep_files", { uri: "t://nope/", pattern: "x" }),
+    ];
+    expect(errors[0]).toBe(
+      "No file at t://a/nope.md; call kb_list_files to browse.",
+    );
+    expect(errors[1]).toContain("kb_use_skill");
+    expect(errors[2]).toContain("call kb_list_files");
+    expect(errors[3]).toContain("call kb_list_files");
+    for (const e of errors) {
+      expect(e).not.toMatch(/(?<![\w])(list_files|read_file|use_skill)\b/);
+    }
+    const bare = fileOperations({ providers: [tree()] });
+    await expect(
+      run(bare, "read_file", { uri: "t://a/nope.md" }),
+    ).rejects.toThrow("No file at t://a/nope.md; call list_files to browse.");
   });
 
   test("tool instructions carry the paging guidance", () => {

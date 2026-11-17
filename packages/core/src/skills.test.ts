@@ -786,6 +786,10 @@ describe("use_skill files", () => {
     const skill = await use();
     expect(skill.included ?? []).toEqual([]);
     expect(skill.notice).toContain("references/nope.md");
+    expect(skill.notice).not.toContain("read_file");
+    const brief = renderSkillBrief(skill, "mt_");
+    expect(brief).toMatch(/include references\/nope\.md .*mt_read_file/);
+    expect(brief).not.toMatch(/(?<![\w])read_file\b/);
   });
 
   test("a binary include is skipped with a notice", async () => {
