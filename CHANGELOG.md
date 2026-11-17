@@ -24,6 +24,10 @@ Versions below follow `@donghanh/core` and `@donghanh/hono`. Other packages note
 - **Breaking:** the `Skill.files` record of inline files.
 - **Breaking:** the old `staticSkills(key, files)` signature.
 
+### create-donghanh 0.6.0
+
+- Templates depend on `^0.5.0`.
+
 ## 0.4.1 (2026-10-31)
 
 ### Fixed
