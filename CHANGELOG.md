@@ -2,6 +2,28 @@
 
 Versions below follow `@donghanh/core` and `@donghanh/hono`. Other packages note their own version where it differs.
 
+## 0.5.0 (unreleased)
+
+### Added
+
+- `@donghanh/core/files`: `FileProvider`, the `list_files`, `read_file` and `grep_files` tools, and an optional `search_files` hook, all through `fileOperations`.
+- `FILES_INSTRUCTIONS` and `staticFiles` for serving a fixed tree of files.
+- Ref and markdown helpers: `resolveRef`, `extractRefs`, `absolutizeRefs`, `chunkMarkdown`, `describeMarkdown` and `parseFrontmatter`.
+- Skills now have a `uri` and a file manifest.
+- `metadata.include` inlines files into `use_skill`, which also returns a resolved `refs` table.
+- `skillOperations({ files })`.
+
+### Changed
+
+- `staticSkills(key, tree)` takes a path-to-content tree and returns a provider with a `.files` file provider.
+- `parseSkillMarkdown` also returns `metadata`.
+- `use_skill` output gains a footer.
+
+### Removed
+
+- **Breaking:** the `Skill.files` record of inline files.
+- **Breaking:** the old `staticSkills(key, files)` signature.
+
 ## 0.4.1 (2026-10-31)
 
 ### Fixed
