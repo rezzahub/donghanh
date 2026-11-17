@@ -79,15 +79,14 @@ async function readWhole(
       return { why: "is binary" };
     }
     if (r.bytes > budget) return { why: "would exceed the inline size limit" };
+    if (r.lineCut) return { why: "has lines too long to include whole" };
     parts.push(r.text);
     const text = parts.join("\n");
     if (encoder.encode(text).length > budget) {
       return { why: "would exceed the inline size limit" };
     }
     if (!r.next) {
-      return r.truncated
-        ? { why: "has lines too long to include whole" }
-        : { text };
+      return { text };
     }
     offset = r.next.offset;
   }

@@ -84,6 +84,7 @@ describe("readFile", () => {
     expect(r.text).toBe(`${"y".repeat(2000)}…[line truncated]`);
     expect(r.next?.offset).toBe(2);
     expect(r.truncated).toBe(true);
+    expect(r.lineCut).toBe(true);
     const all = await readFile([p], { uri: "t://f/giant.md" }, ctx);
     expect(all.lines).toEqual({ from: 1, to: 2, total: 2 });
     expect(all.next).toBeUndefined();

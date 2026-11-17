@@ -734,6 +734,20 @@ describe("use_skill files", () => {
     );
   });
 
+  test("an include with a cut long line on page 1 is not inlined", async () => {
+    const body = `${"y".repeat(2500)}\n${"short\n".repeat(300)}`;
+    const { use } = setup({
+      "s/SKILL.md": skillMd("Go.", "metadata:\n  include: references/a.md\n"),
+      "s/references/a.md": body,
+    });
+    const skill = await use();
+    expect(skill.included ?? []).toEqual([]);
+    expect(skill.notice).toContain("references/a.md");
+    expect(skill.files?.map((f) => f.uri)).toContain(
+      "skills://k/s/references/a.md",
+    );
+  });
+
   test("a missing include adds a notice and does not throw", async () => {
     const { use } = setup({
       "s/SKILL.md": skillMd(

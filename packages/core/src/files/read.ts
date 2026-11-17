@@ -24,6 +24,8 @@ export interface ReadResult {
   text?: string;
   lines?: { from: number; to: number; total: number };
   truncated?: boolean;
+  /** True when a line on this page was cut to the line-length cap (so text is not the file verbatim). */
+  lineCut?: true;
   next?: { uri: string; offset: number; limit?: number };
 }
 
@@ -170,5 +172,6 @@ export async function readFile(
     truncated = true;
   }
   if (truncated) result.truncated = true;
+  if (anyCut) result.lineCut = true;
   return result;
 }
