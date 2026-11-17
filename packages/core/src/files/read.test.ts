@@ -168,7 +168,7 @@ describe("readFile", () => {
     );
   });
 
-  it("a throwing provider never leaks its message", async () => {
+  it("a throwing provider reads as unavailable and never leaks its message", async () => {
     const boom: FileProvider = {
       scheme: "t",
       stat: async () => null,
@@ -181,7 +181,7 @@ describe("readFile", () => {
       (e) => e,
     );
     expect(String(err.message)).toBe(
-      "No file at t://f/x.md; call list_files to browse.",
+      "File providers are unavailable (t); try again.",
     );
   });
 

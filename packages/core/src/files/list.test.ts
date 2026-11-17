@@ -63,6 +63,33 @@ describe("firstFrom", () => {
     );
     expect(JSON.stringify(errors.mock.calls)).not.toContain(SECRET);
   });
+  it("throws unavailable when every matching provider throws", async () => {
+    const err = await firstFrom([thrower("s", "all")], "s://a.md", (p) =>
+      p.read("s://a.md", ctx),
+    ).catch((e: Error) => e);
+    expect((err as Error).message).toBe(
+      "File providers are unavailable (s); try again.",
+    );
+  });
+  it("throws unavailable when one provider answers null and another throws", async () => {
+    const err = await firstFrom(
+      [staticFiles("s", { "b.md": "x" }), thrower("s", "all")],
+      "s://a.md",
+      (p) => p.read("s://a.md", ctx),
+    ).catch((e: Error) => e);
+    expect((err as Error).message).toBe(
+      "File providers are unavailable (s); try again.",
+    );
+    expect((err as Error).message).not.toContain(SECRET);
+  });
+  it("returns null when no provider threw and none had it", async () => {
+    const r = await firstFrom(
+      [thrower("o", "all"), staticFiles("s", { "b.md": "x" })],
+      "s://a.md",
+      (p) => p.read("s://a.md", ctx),
+    );
+    expect(r).toBeNull();
+  });
 });
 
 describe("staticFiles", () => {
@@ -177,6 +204,12 @@ describe("listFiles", () => {
     expect(r.entries).toHaveLength(500);
     expect(r.next).toBeDefined();
   });
+  it("an outage of the only provider reads as unavailable, not missing", async () => {
+    await expect(
+      listFiles([thrower("s", "all")], { uri: "s://a/" }, ctx),
+    ).rejects.toThrow("File providers are unavailable (s); try again.");
+  });
+
   it("throws for an unknown uri", async () => {
     await expect(listFiles([a], { uri: "s://nope/" }, ctx)).rejects.toThrow(
       "No file or folder at s://nope/; call list_files with no uri to see the roots.",

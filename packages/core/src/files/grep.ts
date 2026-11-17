@@ -99,6 +99,8 @@ export async function grepFiles(
     FILE_LIMITS.grepMatches,
   );
 
+  // A native grep that fails falls back to the scan below, which reports
+  // unavailable itself if the providers cannot list or read either.
   const native = await firstFrom(providers, uri, async (p) =>
     p.grep
       ? p.grep(
@@ -113,7 +115,7 @@ export async function grepFiles(
           ctx,
         )
       : null,
-  );
+  ).catch(() => null);
   if (native) {
     return { hits: native.slice(0, limit), capped: native.length >= limit };
   }

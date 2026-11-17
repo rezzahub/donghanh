@@ -228,6 +228,30 @@ describe("grepFiles", () => {
     expect((err as Error).message).not.toContain("secret-token");
   });
 
+  it("an outage of the only provider reads as unavailable", async () => {
+    const bad: FileProvider = {
+      ...staticFiles("t", { "d/a.md": "x\n" }),
+      stat: async () => {
+        throw new Error("secret-token");
+      },
+    };
+    await expect(
+      grepFiles([bad], { pattern: "x", uri: "t://d/" }, ctx),
+    ).rejects.toThrow("File providers are unavailable (t); try again.");
+  });
+
+  it("a file whose read fails everywhere makes the grep unavailable", async () => {
+    const bad: FileProvider = {
+      ...staticFiles("t", { "d/a.md": "x\n" }),
+      read: async () => {
+        throw new Error("secret-token");
+      },
+    };
+    await expect(
+      grepFiles([bad], { pattern: "x", uri: "t://d/" }, ctx),
+    ).rejects.toThrow("File providers are unavailable (t); try again.");
+  });
+
   describe("a failing provider among several", () => {
     const tree = { "d/a.md": "needle\n" };
     const boom = () => {
