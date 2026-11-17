@@ -205,9 +205,9 @@ Pure, no I/O.
 
 | Function | Returns |
 |---|---|
-| `resolveRef(base, rel)` | `rel` resolved against the directory of `base`, as a URL; an absolute `scheme://` ref comes back as is |
-| `extractRefs(markdown, baseUri)` | `{ raw, uri }[]` for relative and `scheme://` link and image targets; skips `http(s)` links, anchors and code |
-| `absolutizeRefs(markdown, baseUri)` | the Markdown with those targets made absolute, for hosts that render it; not for agent-facing text |
+| `resolveRef(base, rel)` | `rel` resolved against the directory of `base`, as a URL, in the form providers list it: `#fragment` removed, path percent-decoded (`a%20b.md` gives `a b.md`) |
+| `extractRefs(markdown, baseUri)` | `{ raw, uri }[]` for relative and `scheme://` link and image targets (`raw` as written, `uri` from `resolveRef`); skips `http(s)` links, anchors and code |
+| `absolutizeRefs(markdown, baseUri)` | the Markdown with those targets made absolute, still percent-encoded and with their `#fragment`, for hosts that render it; not for agent-facing text |
 | `chunkMarkdown(text, { by: "heading" \| "lines", size? })` | `{ from, to, text }[]` line ranges that match what `read_file` pages by |
 | `describeMarkdown(text)` | one line: the frontmatter `description`, else the first heading, else the first non-empty line |
 | `parseFrontmatter(md)` | `{ fields, metadata, folded, body }`, or `null` without a `---` block |

@@ -16,6 +16,8 @@ const tree = {
   "f/crlf.md": "a\r\nb\r\nc\r\n",
   "docs/a/index.md": "# A\n",
   "docs/a/other.md": "other 1\nother 2\n",
+  "docs/a/my notes.md": "spaced\n",
+  "docs/a/tài-liệu.md": "vietnamese\n",
   "f/pic.png": { url: "https://x/pic.png", mime: "image/png", bytes: 9 },
 };
 const p = staticFiles("t", tree);
@@ -140,6 +142,17 @@ describe("readFile", () => {
     );
     expect(r.uri).toBe("t://docs/a/other.md");
     expect(r.text).toBe("other 1\nother 2");
+  });
+
+  it("a path with a fragment, %20 or non-ASCII name reads the listed file", async () => {
+    const base = "t://docs/a/index.md";
+    const read = (path: string) => readFile([p], { path, base }, ctx);
+    expect((await read("other.md#part")).uri).toBe("t://docs/a/other.md");
+    expect((await read("my%20notes.md")).text).toBe("spaced");
+    expect((await read("tài-liệu.md")).text).toBe("vietnamese");
+    expect((await read("t%C3%A0i-li%E1%BB%87u.md")).uri).toBe(
+      "t://docs/a/tài-liệu.md",
+    );
   });
 
   it("binary returns kind binary and url, no text", async () => {

@@ -41,7 +41,7 @@ Two rules about the frontmatter. `name` must equal the folder name, in lowercase
 
 ## Link with relative paths
 
-Write links as plain relative paths: `references/discounts.md`, `../shared/glossary.md`. A path resolves against the folder of the file that contains the link, as in any Markdown renderer. In `references/regions/eu.md`, a link to `../plans.md` means `references/plans.md`.
+Write links as plain relative paths: `references/discounts.md`, `../shared/glossary.md`. A path resolves against the folder of the file that contains the link, as in any Markdown renderer. In `references/regions/eu.md`, a link to `../plans.md` means `references/plans.md`. An anchor such as `references/discounts.md#approval` opens the whole file, and file names with spaces or accents (`tài-liệu.md`, `my%20notes.md`) resolve to the file as it is named in the folder.
 
 Do not write absolute uris or full paths from the root of your store. A skill written with relative links keeps working when it moves, and is the same text a person sees when they open the file.
 

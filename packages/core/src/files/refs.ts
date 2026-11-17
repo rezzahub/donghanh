@@ -15,11 +15,8 @@ export function uriScheme(uri: string): string | null {
   return match ? (match[1] as string).toLowerCase() : null;
 }
 
-/**
- * Resolve `rel` against the directory of `base`. An `@version` on the base's
- * last segment is dropped; `../` past the root clamps instead of throwing.
- */
-export function resolveRef(base: string, rel: string): string {
+/** `rel` resolved against the directory of `base` as an encoded URL, fragment kept. */
+function resolveEncoded(base: string, rel: string): string {
   const cleanBase = base.replace(/@[^/@]*$/, "");
   let url: URL;
   try {
@@ -31,6 +28,26 @@ export function resolveRef(base: string, rel: string): string {
     return new URL(rel, url).href;
   } catch {
     return rel;
+  }
+}
+
+/**
+ * Resolve `rel` against the directory of `base`. An `@version` on the base's
+ * last segment is dropped; `../` past the root clamps instead of throwing.
+ *
+ * The result is the uri in the form providers list it: any `#fragment` is
+ * removed and the path is percent-decoded (`my%20notes.md` and `tài-liệu.md`
+ * come back with a literal space and literal letters). A path that does not
+ * decode stays encoded. `absolutizeRefs` keeps the encoded form instead.
+ */
+export function resolveRef(base: string, rel: string): string {
+  const href = resolveEncoded(base, rel);
+  const hash = href.indexOf("#");
+  const bare = hash < 0 ? href : href.slice(0, hash);
+  try {
+    return decodeURI(bare);
+  } catch {
+    return bare;
   }
 }
 
@@ -103,13 +120,18 @@ export function extractRefs(
   return refs;
 }
 
-/** Rewrite relative link targets to absolute uris; every other byte is unchanged. */
+/**
+ * Rewrite relative link targets to absolute uris; every other byte is
+ * unchanged. Targets stay percent-encoded and keep their `#fragment`, so the
+ * result is still valid Markdown link syntax (unlike `resolveRef`, which
+ * decodes and drops the fragment).
+ */
 export function absolutizeRefs(markdown: string, baseUri: string): string {
   let out = "";
   let cursor = 0;
   for (const { start, end, raw } of scan(markdown)) {
     if (!isRef(raw)) continue;
-    out += markdown.slice(cursor, start) + resolveRef(baseUri, raw);
+    out += markdown.slice(cursor, start) + resolveEncoded(baseUri, raw);
     cursor = end;
   }
   return out + markdown.slice(cursor);

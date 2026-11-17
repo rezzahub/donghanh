@@ -34,6 +34,27 @@ describe("resolveRef", () => {
     );
   });
 
+  test("returns the uri as providers list it: no fragment, path decoded", () => {
+    expect(resolveRef(SKILL, "references/y.md#approval")).toBe(
+      "mintube://niche/n10/skills/x/references/y.md",
+    );
+    expect(resolveRef(SKILL, "my%20notes.md")).toBe(
+      "mintube://niche/n10/skills/x/my notes.md",
+    );
+    expect(resolveRef(SKILL, "tài-liệu.md")).toBe(
+      "mintube://niche/n10/skills/x/tài-liệu.md",
+    );
+    expect(resolveRef("mintube://niche/tài/SKILL.md", "a b.md#x")).toBe(
+      "mintube://niche/tài/a b.md",
+    );
+  });
+
+  test("keeps an undecodable path encoded", () => {
+    expect(resolveRef(SKILL, "bad%E0%A4.md")).toBe(
+      "mintube://niche/n10/skills/x/bad%E0%A4.md",
+    );
+  });
+
   test("throws on an unparseable base", () => {
     expect(() => resolveRef("not a uri", "a.md")).toThrow(/Invalid base uri/);
   });
@@ -54,6 +75,18 @@ describe("extractRefs", () => {
       },
       { raw: "img/p.png", uri: "mintube://niche/n10/skills/x/img/p.png" },
       { raw: "mintube://team/t/b.md", uri: "mintube://team/t/b.md" },
+    ]);
+  });
+
+  test("keeps the raw text and returns the decoded uri without fragment", () => {
+    expect(
+      extractRefs("[d](references/d.md#approval) [v](tài-liệu.md)", SKILL),
+    ).toEqual([
+      {
+        raw: "references/d.md#approval",
+        uri: "mintube://niche/n10/skills/x/references/d.md",
+      },
+      { raw: "tài-liệu.md", uri: "mintube://niche/n10/skills/x/tài-liệu.md" },
     ]);
   });
 
@@ -89,6 +122,22 @@ describe("absolutizeRefs", () => {
         "```",
         "`[d](inline.md)` end",
       ].join("\n"),
+    );
+  });
+
+  test("keeps the encoded form with the fragment", () => {
+    expect(
+      absolutizeRefs(
+        "[d](d.md#approval) [v](tài liệu.md) [s](a%20b.md)",
+        SKILL,
+      ),
+    ).toBe(
+      "[d](mintube://niche/n10/skills/x/d.md#approval) " +
+        "[v](tài liệu.md) " +
+        "[s](mintube://niche/n10/skills/x/a%20b.md)",
+    );
+    expect(absolutizeRefs("[v](tài-liệu.md)", SKILL)).toBe(
+      "[v](mintube://niche/n10/skills/x/t%C3%A0i-li%E1%BB%87u.md)",
     );
   });
 

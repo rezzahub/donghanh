@@ -715,6 +715,33 @@ describe("use_skill files", () => {
     );
   });
 
+  test("includes and refs with a fragment or a non-ASCII name resolve", async () => {
+    const { use } = setup({
+      "s/SKILL.md": skillMd(
+        "See [d](references/d.md#approval) and [v](tài-liệu.md).",
+        "metadata:\n  include: references/d.md#approval, tài-liệu.md\n",
+      ),
+      "s/references/d.md": "DDD\n",
+      "s/tài-liệu.md": "VVV\n",
+    });
+    const skill = await use();
+    expect(skill.notice).toBeUndefined();
+    expect(skill.included).toEqual([
+      { path: "references/d.md#approval", text: "DDD" },
+      { path: "tài-liệu.md", text: "VVV" },
+    ]);
+    expect(skill.refs).toEqual([
+      {
+        raw: "references/d.md#approval",
+        uri: "skills://k/s/references/d.md",
+      },
+      { raw: "tài-liệu.md", uri: "skills://k/s/tài-liệu.md" },
+    ]);
+    expect(skill.files?.map((f) => f.uri)).toContain(
+      "skills://k/s/tài-liệu.md",
+    );
+  });
+
   test("an include over the cap stays manifest-only with a notice", async () => {
     const line = `${"x".repeat(99)}\n`;
     const { use } = setup({

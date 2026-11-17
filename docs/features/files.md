@@ -127,9 +127,9 @@ A host with its own tenancy and authorization wraps the engine functions in its 
 
 All pure, no I/O.
 
-- `resolveRef(base, rel)`: resolves `rel` against the directory of `base`, as a URL does. An absolute `scheme://` ref is returned as is; an `@version` on the base's last segment is dropped.
-- `extractRefs(markdown, baseUri)`: `{ raw, uri }[]` for relative and `scheme://` link and image targets. Skips `http(s)` links, `#anchors` and code.
-- `absolutizeRefs(markdown, baseUri)`: a copy of the Markdown with those targets made absolute. For hosts that render the Markdown to people. Never apply it to text the agent receives; the agent should see the links as written.
+- `resolveRef(base, rel)`: resolves `rel` against the directory of `base`, as a URL does; an `@version` on the base's last segment is dropped. The result is the uri in the form providers list it: the `#fragment` is removed and the path is percent-decoded, so `my%20notes.md#intro` resolves to `.../my notes.md` and `tài-liệu.md` stays `.../tài-liệu.md` (a path that does not decode stays encoded). `read_file` with `path` + `base` and `metadata.include` resolve the same way, so a provider sees the raw names it lists.
+- `extractRefs(markdown, baseUri)`: `{ raw, uri }[]` for relative and `scheme://` link and image targets. Skips `http(s)` links, `#anchors` and code. `raw` is the target as written; `uri` comes from `resolveRef`.
+- `absolutizeRefs(markdown, baseUri)`: a copy of the Markdown with those targets made absolute. Unlike `resolveRef`, targets stay percent-encoded and keep their `#fragment`, so the links remain valid Markdown. For hosts that render the Markdown to people. Never apply it to text the agent receives; the agent should see the links as written.
 - `chunkMarkdown(text, { by: "heading" | "lines", size? })`: chunks with `{ from, to, text }` line ranges that match what `read_file` pages by. For indexers.
 - `describeMarkdown(text)`: the frontmatter `description`, else the first `#` heading, else the first non-empty line, as one line of at most 160 characters.
 - `parseFrontmatter(md)`: `{ fields, metadata, folded, body }` or `null` when there is no `---` block.
