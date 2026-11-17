@@ -201,4 +201,58 @@ describe("readFile", () => {
     expect(r.lines).toEqual({ from: 11, to: 12, total: 40 });
     expect(r.next).toEqual({ uri: "t://f/x.md", offset: 13, limit: 2 });
   });
+
+  it("readLines without totalLines: the byte cap still yields a next, and paging covers every line once", async () => {
+    const rows = Array.from(
+      { length: 100 },
+      (_, i) => `${i}:${"z".repeat(400)}`,
+    );
+    const readLines = vi.fn(
+      async (uri: string, r: { from: number; to: number }) => ({
+        uri,
+        mime: "text/plain",
+        bytes: 1,
+        text: `${rows.slice(r.from - 1, r.to).join("\n")}\n`,
+      }),
+    );
+    const lp: FileProvider = {
+      scheme: "t",
+      stat: async () => null,
+      list: async () => ({ entries: [] }),
+      read: async () => null,
+      readLines,
+    };
+    const seen: string[] = [];
+    let args: { uri: string; offset?: number; limit?: number } = {
+      uri: "t://f/x.md",
+    };
+    for (let guard = 0; guard < 20; guard++) {
+      const r = await readFile([lp], args, ctx);
+      if (r.text) seen.push(...r.text.split("\n"));
+      if (!r.next) break;
+      expect(r.next.offset).toBe((r.lines?.to ?? 0) + 1);
+      args = r.next;
+    }
+    expect(seen).toEqual(rows);
+  });
+
+  it("readLines past the end returns empty text with the total, no error", async () => {
+    const lp: FileProvider = {
+      scheme: "t",
+      stat: async () => null,
+      list: async () => ({ entries: [] }),
+      read: async () => null,
+      readLines: async (uri) => ({
+        uri,
+        mime: "text/plain",
+        bytes: 1,
+        text: "",
+        totalLines: 7,
+      }),
+    };
+    const r = await readFile([lp], { uri: "t://f/x.md", offset: 99 }, ctx);
+    expect(r.text).toBe("");
+    expect(r.lines?.total).toBe(7);
+    expect(r.next).toBeUndefined();
+  });
 });

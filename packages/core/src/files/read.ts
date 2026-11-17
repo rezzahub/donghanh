@@ -155,7 +155,9 @@ export async function readFile(
   if (tail === undefined) {
     const more =
       out.length > 0 &&
-      (total !== undefined ? to < total : requested >= size && ranged);
+      (total !== undefined
+        ? to < total
+        : out.length < requested || (ranged && requested >= size));
     if (more) {
       result.next = {
         uri,
