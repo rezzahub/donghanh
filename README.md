@@ -75,7 +75,7 @@ By default every operation is an MCP tool. For apps with many operations, `mcpRo
 mcpRoutes({ /* ... */ exposure: { default: "tool", catalog: { type: "query" }, pin: ["start"] } });
 ```
 
-`App({ operations, instructions })` carries the app's playbook; every adapter uses it (`initialize.instructions` for MCP). `@donghanh/core/skills` adds searchable skills. See the docs site for details.
+`App({ operations, instructions })` carries the app's playbook; every adapter uses it (`initialize.instructions` for MCP). `@donghanh/core/skills` adds searchable skills and `@donghanh/core/files` gives the agent paged, searchable access to the files in them and in your docs. See the docs site for details.
 
 ## Architecture
 

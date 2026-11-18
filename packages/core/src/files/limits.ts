@@ -1,0 +1,15 @@
+export const FILE_LIMITS = {
+  readLines: 200,
+  readBytes: 16384,
+  lineChars: 2000,
+  listDefault: 100,
+  listMax: 500,
+  grepMatches: 50,
+  grepContext: 2,
+  grepFiles: 200,
+  grepBytes: 2097152,
+  searchDefault: 10,
+  searchMax: 25,
+  includeBytes: 32768,
+  manifestMax: 50,
+} as const;

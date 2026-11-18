@@ -63,6 +63,7 @@ export default defineConfig({
             { label: "Introduction", slug: "guides/introduction" },
             { label: "Quick Start", slug: "guides/quickstart" },
             { label: "Many operations", slug: "guides/many-operations" },
+            { label: "Skills and files", slug: "guides/skills-and-files" },
           ],
         },
         {

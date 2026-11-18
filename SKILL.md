@@ -69,3 +69,13 @@ export default registerOperation(MyOperation, {
 | `operations/index.ts` | Registry (`as const`) |
 | `executor.ts` | Maps operation IDs to data fetching |
 | `worker.ts` | Hono entry, mounts routes |
+
+### Files for the agent
+
+Add `fileOperations` from `@donghanh/core/files` when the agent must browse, read in pieces or grep files: docs, transcripts, or the folders skills bring with them (`skillOperations` takes `files: [provider]` and `use_skill` then returns a manifest, included files and resolved links). Wire it:
+
+- Spread `files.operations` into `App`, wrap the executor with `files.wrap(...)` (compose with `skills.wrap`), and pass `instructionsSuffix: files.instructions` to `mcpRoutes` (appended only when the app has `instructions`; it starts with a blank line, so with your own suffix pass `` `${mine}${files.instructions}` ``).
+- Give `fileOperations` the same `prefix` as `skillOperations`; the `use_skill` footer, the file tool instructions and their errors name `<prefix>read_file` and `<prefix>list_files`.
+- A provider returns `null` for a file that is missing and for one the caller may not read. Reads are paged and capped by the engine.
+
+Full contract, caps and implementer rules: `docs/features/files.md`.
