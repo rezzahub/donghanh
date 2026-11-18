@@ -123,6 +123,10 @@ A host with its own tenancy and authorization wraps the engine functions in its 
 
 `skillOperations({ providers, files })` takes the file providers. `use_skill` then returns the skill with its manifest, the files the skill lists in `metadata.include` (each must be inside the skill's folder), and a table of resolved links. See the [core reference](https://donghanh.dev/reference/core) for the result, and [Skills and files](https://donghanh.dev/guides/skills-and-files) for how skill authors use it.
 
+### Providers whose skill uri is the folder node
+
+When a skill's uri is a doc that also holds files beneath it (`mintube://niche/n10/skills/write-song` with `.../write-song/references/a.md`), set `Skill.folder` to that uri; without it the folder is the directory of `uri`, one level too high. Hosts with their own `use_skill` can call the exported `attachSkillFiles` and `renderSkillBrief` from `@donghanh/core/skills` to reuse the manifest, includes, refs and footer.
+
 ## Helpers
 
 All pure, no I/O.

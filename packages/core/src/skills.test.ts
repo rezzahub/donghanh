@@ -1,10 +1,16 @@
 import { describe, expect, test, vi } from "vitest";
-import { type FileProvider, listFiles, staticFiles } from "./files";
+import {
+  type FileProvider,
+  listFiles,
+  type StaticBinary,
+  staticFiles,
+} from "./files";
 import { App } from "./primitives";
 import { buildRegistry } from "./registry";
-import { renderSkillBrief } from "./skill-files";
 import {
+  attachSkillFiles,
   parseSkillMarkdown,
+  renderSkillBrief,
   type Skill,
   type SkillProvider,
   type SkillSummary,
@@ -1073,5 +1079,137 @@ describe("use_skill files", () => {
         spy.mockRestore();
       }
     });
+  });
+});
+
+describe("Skill.folder", () => {
+  const bin: StaticBinary = {
+    url: "https://x/data.bin",
+    mime: "application/octet-stream",
+    bytes: 4,
+  };
+  const markdown =
+    "---\nname: w\ndescription: d\nmetadata:\n  include: references/a.md\n---\nSee [a](references/a.md).\n";
+  const tree = {
+    "x/skills/w/references/a.md": "A text\n",
+    "x/skills/w/references/b.md": "B text\n",
+    "x/skills/wx/other.md": "Other\n",
+    "x/skills/w/data.bin": bin,
+  };
+  const make = (extra: Partial<Skill> = {}, md = markdown): Skill => ({
+    id: "w",
+    slug: "w",
+    name: "w",
+    description: "d",
+    hash: "h",
+    markdown: md,
+    uri: "t://x/skills/w",
+    folder: "t://x/skills/w/",
+    ...extra,
+  });
+  const attach = async (skill: Skill, read?: FileProvider["read"]) => {
+    const f = staticFiles("t", tree);
+    const files: FileProvider = read ? { ...f, read } : f;
+    return attachSkillFiles(skill, [files], ctx);
+  };
+
+  test("manifest is the folder's files, not sibling folders", async () => {
+    const out = await attach(make());
+    expect(out.files?.map((f) => f.uri)).toEqual([
+      "t://x/skills/w/data.bin",
+      "t://x/skills/w/references/a.md",
+      "t://x/skills/w/references/b.md",
+    ]);
+    const brief = renderSkillBrief(out, "");
+    expect(brief).toContain("references/a.md");
+    expect(brief).toContain("references/b.md");
+    expect(brief).toContain("data.bin");
+    expect(brief).not.toContain("wx/");
+  });
+
+  test("include resolves against the folder", async () => {
+    const out = await attach(make());
+    expect(out.included).toEqual([{ path: "references/a.md", text: "A text" }]);
+    expect(out.notice).toBeUndefined();
+  });
+
+  test("a sibling-folder include is rejected and never read", async () => {
+    const f = staticFiles("t", tree);
+    const read = vi.fn(f.read.bind(f));
+    const out = await attach(
+      make(
+        {},
+        "---\nname: w\ndescription: d\nmetadata:\n  include: ../wx/other.md\n---\nBody\n",
+      ),
+      read,
+    );
+    expect(out.included).toBeUndefined();
+    expect(out.notice).toBe(
+      "Include ../wx/other.md is outside the skill folder and was not included.",
+    );
+    expect(read.mock.calls.map((c) => c[0])).not.toContain(
+      "t://x/skills/wx/other.md",
+    );
+  });
+
+  test("refs resolve against the folder", async () => {
+    const out = await attach(make());
+    expect(out.refs).toEqual([
+      { raw: "references/a.md", uri: "t://x/skills/w/references/a.md" },
+    ]);
+  });
+
+  test("the footer's read hint uses the folder as base", async () => {
+    const brief = renderSkillBrief(await attach(make()), "");
+    expect(brief).toContain(
+      'read_file { path: "<path as listed above>", base: "t://x/skills/w/" }',
+    );
+    expect(brief).toContain("--- files (t://x/skills/w) ---");
+  });
+
+  test("a folder without a trailing slash behaves the same", async () => {
+    const a = await attach(make());
+    const b = await attach(make({ folder: "t://x/skills/w" }));
+    expect(b.files).toEqual(a.files);
+    expect(b.refs).toEqual(a.refs);
+    expect(b.included).toEqual(a.included);
+    expect(renderSkillBrief(b, "")).toBe(renderSkillBrief(a, ""));
+  });
+
+  test("without folder the skill is unchanged and the base is its uri", async () => {
+    const skill = make({ uri: "t://x/skills/w/SKILL.md" });
+    delete skill.folder;
+    const out = await attach(skill);
+    expect(out.files?.map((f) => f.uri)).toEqual([
+      "t://x/skills/w/data.bin",
+      "t://x/skills/w/references/a.md",
+      "t://x/skills/w/references/b.md",
+    ]);
+    expect(renderSkillBrief(out, "")).toContain(
+      'base: "t://x/skills/w/SKILL.md" }',
+    );
+  });
+
+  test("a SKILL.md file inside the folder is left out of the manifest", async () => {
+    const f = staticFiles("t", {
+      ...tree,
+      "x/skills/w/SKILL.md": "---\nname: w\ndescription: d\n---\n",
+    });
+    const out = await attachSkillFiles(
+      make({ uri: "t://x/skills/w/SKILL.md" }),
+      [f],
+      ctx,
+    );
+    expect(out.files?.map((x) => x.uri)).not.toContain(
+      "t://x/skills/w/SKILL.md",
+    );
+  });
+
+  test("attachSkillFiles and renderSkillBrief work without skillOperations", async () => {
+    const brief = renderSkillBrief(await attach(make()), "mt_");
+    expect(brief).toContain("--- files (t://x/skills/w) ---");
+    expect(brief).toContain("references/b.md");
+    expect(brief).toContain('mt_read_file { path: "<path as listed above>"');
+    expect(brief).toContain("--- included: references/a.md ---");
   });
 });

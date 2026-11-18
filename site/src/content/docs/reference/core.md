@@ -114,6 +114,7 @@ Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `descript
 `SkillSummary` is `{ id, slug, name, description, hash, writableBy? }`; `hash` is the hash of `SKILL.md` only. `Skill` adds `markdown` and the file fields below, all optional so a provider with no file tree can leave them out:
 
 - `uri`: the uri of this skill's `SKILL.md`. Without one, `use_skill` returns the skill as is.
+- `folder`: the uri of the folder holding the skill's files. Defaults to the directory of `uri`; set it when `uri` is a doc that is itself the folder node. A missing trailing `/` is added. The manifest, includes, refs and the footer's `base` follow it.
 - `files`: manifest of the skill's folder, files only (binary ones marked by mime), sorted by path, with `uri`, `bytes`, `lines` and `description`. At most 50 entries.
 - `moreFiles`: how many files the manifest left out; `list_files` with the skill folder's uri shows them.
 - `included`: `{ path, text }[]`, the files named in `metadata.include`, in order. Includes must be inside the skill's folder; one that resolves outside it is not read and adds a `notice` line.
