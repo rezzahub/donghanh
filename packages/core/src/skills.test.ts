@@ -112,6 +112,37 @@ describe("parseSkillMarkdown", () => {
     );
   });
 
+  test("staticSkills accepts an empty tree", async () => {
+    const s = staticSkills("k", {});
+    expect(await s.search("", ctx)).toEqual([]);
+  });
+
+  test("staticSkills throws on a non-empty tree with no skill", () => {
+    expect(() => staticSkills("k", { "x/notes.md": "n", "y.md": "y" })).toThrow(
+      'staticSkills expects a tree of "<slug>/SKILL.md" files; none of the 2 entries is one (the old form took { name: markdown }, see the 0.5.0 changelog)',
+    );
+    expect(() => staticSkills("k", { "a/b/SKILL.md": md("b") })).toThrow(
+      /none of the 1 entries/,
+    );
+  });
+
+  test("staticSkills throws on the old flat form", () => {
+    expect(() => staticSkills("k", { foo: md("foo"), bar: md("bar") })).toThrow(
+      /none of the 2 entries/,
+    );
+  });
+
+  test("staticSkills throws on a root SKILL.md", () => {
+    expect(() =>
+      staticSkills("k", { "SKILL.md": md("x"), "x/SKILL.md": md("x") }),
+    ).toThrow(
+      'staticSkills: "SKILL.md" at the root of the tree is not a skill; put it at "<slug>/SKILL.md"',
+    );
+    expect(() => staticSkills("k", { "SKILL.md": md("x") })).toThrow(
+      /root of the tree/,
+    );
+  });
+
   test("staticSkills treats other tree entries as files, not skills", async () => {
     const s = staticSkills("k", {
       "x/SKILL.md": md("x"),

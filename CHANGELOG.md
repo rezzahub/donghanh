@@ -15,7 +15,7 @@ Versions below follow `@donghanh/core` and `@donghanh/hono`. Other packages note
 
 ### Changed
 
-- `staticSkills(key, tree)` takes a path-to-content tree and returns a provider with a `.files` file provider.
+- `staticSkills(key, tree)` takes a path-to-content tree and returns a provider with a `.files` file provider; it throws on a non-empty tree with no `<slug>/SKILL.md` entry (the old `{ name: markdown }` form) or on a root `SKILL.md`, so a migration fails loudly.
 - `parseSkillMarkdown` also returns `metadata`.
 - `use_skill` output gains a footer.
 

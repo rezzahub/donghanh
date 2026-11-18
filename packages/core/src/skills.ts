@@ -99,17 +99,32 @@ export function parseSkillMarkdown(md: string): {
   };
 }
 
+const SKILL_PATH = /^([^/]+)\/SKILL\.md$/;
+
 /**
  * Read-only provider over a file tree. Skills are the `<slug>/SKILL.md`
  * entries; every other entry is just a file, reachable through `.files`.
+ * Throws on a non-empty tree with no skill (the old `{ name: markdown }`
+ * form) or a root `SKILL.md`; an empty tree is an empty provider.
  */
 export function staticSkills(
   key: string,
   tree: Record<string, string>,
 ): SkillProvider & { files: FileProvider } {
+  const entries = Object.entries(tree);
+  if ("SKILL.md" in tree) {
+    throw new Error(
+      'staticSkills: "SKILL.md" at the root of the tree is not a skill; put it at "<slug>/SKILL.md"',
+    );
+  }
+  if (entries.length && !entries.some(([p]) => SKILL_PATH.test(p))) {
+    throw new Error(
+      `staticSkills expects a tree of "<slug>/SKILL.md" files; none of the ${entries.length} entries is one (the old form took { name: markdown }, see the 0.5.0 changelog)`,
+    );
+  }
   const skills = new Map<string, Promise<Skill>>();
-  for (const [path, markdown] of Object.entries(tree)) {
-    const m = /^([^/]+)\/SKILL\.md$/.exec(path);
+  for (const [path, markdown] of entries) {
+    const m = SKILL_PATH.exec(path);
     if (!m) continue;
     const dir = m[1] as string;
     const { name, description } = parseSkillMarkdown(markdown);

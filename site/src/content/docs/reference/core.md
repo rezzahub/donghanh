@@ -123,7 +123,7 @@ Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `descript
 `parseSkillMarkdown(md)` returns `{ name, description, metadata, body }`; `metadata` is read from the indented one-level `metadata:` block of the frontmatter. A flat top-level `include:` is not read.
 
 ### `staticSkills(key, tree)`
-Read-only provider over a file tree (`Record<path, string>`). The `<slug>/SKILL.md` entries are the skills; every other entry is a file in the tree. The slug is the frontmatter `name` (lowercase letters, digits, single hyphens) and must equal the folder name. It returns a `SkillProvider` with a `files` property, an in-memory `FileProvider` over the same tree with scheme `skills`. A skill's uri is `skills://<key>/<slug>/SKILL.md`.
+Read-only provider over a file tree (`Record<path, string>`). The `<slug>/SKILL.md` entries are the skills; every other entry is a file in the tree. The slug is the frontmatter `name` (lowercase letters, digits, single hyphens) and must equal the folder name. It returns a `SkillProvider` with a `files` property, an in-memory `FileProvider` over the same tree with scheme `skills`. A skill's uri is `skills://<key>/<slug>/SKILL.md`. It throws when the tree is non-empty and has no `<slug>/SKILL.md` entry (the old `{ name: markdown }` form), or has a `SKILL.md` at the root; an empty tree is an empty provider.
 
 ```ts
 const team = staticSkills("team", {
