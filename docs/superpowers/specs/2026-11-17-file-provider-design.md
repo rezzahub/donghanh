@@ -180,3 +180,10 @@ donghanh: vitest (`just test`, with `just lint` for biome and tsc), with `static
 - The context type shared by files and skills (`SkillContext` and a file context have the same fields).
 - Regex safety in the default grep (bounds are in the caps table).
 - Mintube: the canonical knowledge mount's source until the `canonical/` layout lands; how `@version` is parsed in a uri; cursor format for `list_files`.
+
+## Amendment (2026-11-18): Skill.folder and host exports
+
+A skill's folder was always the directory of its uri, which fits a `SKILL.md` file but not a host where the skill doc is itself the folder node (mintube: `.../skills/write-song` holds `.../write-song/references/a.md`).
+`Skill` gains an optional `folder`; the manifest, `metadata.include` (and its containment check), refs, and the footer's relative paths and `base` use it. Unset, output is unchanged.
+`attachSkillFiles` and `renderSkillBrief` are exported from `@donghanh/core/skills` for hosts with their own `use_skill`.
+Additive, shipped as 0.5.1.
