@@ -56,7 +56,7 @@ metadata:
   include: references/plans.md, references/discounts.md
 ```
 
-- Comma-separated paths, relative to the `SKILL.md` folder. They arrive inline, in the order you list them.
+- Comma-separated paths, relative to the `SKILL.md` folder. Includes must be inside the skill's folder: a path that resolves outside it (`../x.md`, or a uri on another scheme or skill) is not read and the result carries a note. They arrive inline, in the order you list them.
 - 32 KB in total, and whole files only. A file that would pass the limit, is missing, is binary or has a line over 2,000 characters is not included; it stays in the file list and the result carries a note telling the agent to read it. That is never an error, but it is a skill that does not work as you wrote it, so keep the included files small.
 - Include the few things every run needs. Leave the rest to be fetched. Including everything fills the agent's context before it has started.
 

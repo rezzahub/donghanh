@@ -131,7 +131,7 @@ All pure, no I/O.
 - `Skill` loses `files?: Record<string, string>`. It gains `uri` (of its SKILL.md, optional for providers with no file tree), `files: FileEntry[]` (manifest of the whole folder), `included: { path, text }[]`, `refs: { raw, uri }[]`.
 - `skillOperations` takes `files?: FileProvider[]`. `use_skill` builds the manifest with the provider whose scheme matches `skill.uri`; no match means an empty manifest.
 - `parseSkillMarkdown` also returns `metadata: Record<string, string>`, read from the indented one-level `metadata:` block of the frontmatter.
-- **`metadata.include`**: comma-separated relative paths (string-valued, as the Agent Skills spec requires), resolved against the SKILL.md directory. Included files come inline, in order, up to 32 KB in total. Anything over the cap, missing or binary falls back to manifest-only, with a `notice`. It is never an error.
+- **`metadata.include`**: comma-separated relative paths (string-valued, as the Agent Skills spec requires), resolved against the SKILL.md directory and required to stay inside it (an include that resolves outside the skill folder is not read and adds a `notice`). Included files come inline, in order, up to 32 KB in total. Anything over the cap, missing or binary falls back to manifest-only, with a `notice`. It is never an error.
 - `hash` stays the hash of SKILL.md only.
 - `staticSkills(key, tree)` takes `Record<path, string>`; skills are the `<slug>/SKILL.md` entries and everything else in the tree is a file. One call gives the `SkillProvider` and the in-memory `FileProvider` over the same tree (`staticFiles` is also exported, as a test fixture). The skill uri is `<scheme>://<key>/<slug>/SKILL.md`.
 

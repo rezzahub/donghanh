@@ -57,6 +57,9 @@ async function manifest(
   };
 }
 
+const OUTSIDE = (path: string) =>
+  `Include ${path} is outside the skill folder and was not included.`;
+
 type Included = { text: string } | { why: string };
 
 /** Read a whole text file through the engine, giving up once it passes the budget. */
@@ -105,14 +108,26 @@ async function includes(
   } catch {
     return { included, notice };
   }
+  let folder: string;
+  try {
+    folder = resolveRef(skill.uri, "./");
+  } catch (e) {
+    failed("includes", e);
+    return { included, notice };
+  }
   let used = 0;
   const seen = new Set<string>();
   for (const path of (raw ?? "").split(",").map((p) => p.trim())) {
     if (!path || seen.has(path)) continue;
     seen.add(path);
+    const target = resolveRef(skill.uri, path);
+    if (!target.startsWith(folder)) {
+      notice.push(OUTSIDE(path));
+      continue;
+    }
     const r = await readWhole(
       providers,
-      resolveRef(skill.uri, path),
+      target,
       FILE_LIMITS.includeBytes - used,
       ctx,
     );
@@ -185,7 +200,11 @@ export function renderSkillBrief(skill: Skill, prefix: string): string {
   }
   for (const r of skill.refs ?? []) foot.push(`${r.raw} → ${r.uri}`);
   for (const line of skill.notice ? skill.notice.split("\n") : []) {
-    foot.push(`${line}; read it with ${prefix}read_file.`);
+    foot.push(
+      line.startsWith("include ")
+        ? `${line}; read it with ${prefix}read_file.`
+        : line,
+    );
   }
   foot.push(
     `Relative links in SKILL.md resolve against its uri, ${uri}; links in other files resolve against the file that contains them.`,

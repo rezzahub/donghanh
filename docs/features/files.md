@@ -121,7 +121,7 @@ A host with its own tenancy and authorization wraps the engine functions in its 
 
 ## Skills on top of files
 
-`skillOperations({ providers, files })` takes the file providers. `use_skill` then returns the skill with its manifest, the files the skill lists in `metadata.include`, and a table of resolved links. See the [core reference](https://donghanh.dev/reference/core) for the result, and [Skills and files](https://donghanh.dev/guides/skills-and-files) for how skill authors use it.
+`skillOperations({ providers, files })` takes the file providers. `use_skill` then returns the skill with its manifest, the files the skill lists in `metadata.include` (each must be inside the skill's folder), and a table of resolved links. See the [core reference](https://donghanh.dev/reference/core) for the result, and [Skills and files](https://donghanh.dev/guides/skills-and-files) for how skill authors use it.
 
 ## Helpers
 

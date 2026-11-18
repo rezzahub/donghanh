@@ -116,7 +116,7 @@ Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `descript
 - `uri`: the uri of this skill's `SKILL.md`. Without one, `use_skill` returns the skill as is.
 - `files`: manifest of the skill's folder, files only (binary ones marked by mime), sorted by path, with `uri`, `bytes`, `lines` and `description`. At most 50 entries.
 - `moreFiles`: how many files the manifest left out; `list_files` with the skill folder's uri shows them.
-- `included`: `{ path, text }[]`, the files named in `metadata.include`, in order.
+- `included`: `{ path, text }[]`, the files named in `metadata.include`, in order. Includes must be inside the skill's folder; one that resolves outside it is not read and adds a `notice` line.
 - `refs`: `{ raw, uri }[]`, each relative link in `SKILL.md` with its resolved uri.
 - `notice`: one line per include that could not be inlined (over the cap, missing, binary, or a line cut), with the reason. The rendered footer adds a pointer to `<prefix>read_file` on each line.
 

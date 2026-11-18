@@ -919,4 +919,56 @@ describe("use_skill files", () => {
       spy.mockRestore();
     }
   });
+
+  describe("includes stay inside the skill folder", () => {
+    const inc = (paths: string) =>
+      skillMd("Go.", `metadata:\n  include: ${paths}\n`);
+    const spied = (
+      tree: Record<string, string>,
+      extra: FileProvider[] = [],
+    ) => {
+      const p = staticSkills("k", tree);
+      const read = vi.fn(p.files.read.bind(p.files));
+      const files: FileProvider = { ...p.files, read };
+      const s = skillOperations({ providers: [p], files: [files, ...extra] });
+      return {
+        read,
+        use: async () => (await run(s, "use_skill", { slug: "s" })) as Skill,
+      };
+    };
+    const tree = {
+      "s/SKILL.md": inc(
+        "../x.md, skills://other/s/x.md, skills://k/other/x.md, references/../a.md",
+      ),
+      "s/a.md": "AAA\n",
+      "x.md": "OUTSIDE\n",
+      "other/x.md": "SIBLING\n",
+    };
+
+    test("outside includes are not read and add a fixed notice", async () => {
+      const { use, read } = spied(tree);
+      const skill = await use();
+      expect(skill.included).toEqual([
+        { path: "references/../a.md", text: "AAA" },
+      ]);
+      for (const path of [
+        "../x.md",
+        "skills://other/s/x.md",
+        "skills://k/other/x.md",
+      ]) {
+        expect(skill.notice).toContain(
+          `Include ${path} is outside the skill folder and was not included.`,
+        );
+      }
+      const uris = read.mock.calls.map((c) => c[0]);
+      expect(uris).toEqual(["skills://k/s/a.md"]);
+      const brief = renderSkillBrief(skill, "mt_");
+      expect(brief).toContain(
+        "Include ../x.md is outside the skill folder and was not included.",
+      );
+      expect(brief).not.toContain("OUTSIDE");
+      expect(brief).not.toContain("SIBLING");
+      expect(brief).not.toMatch(/outside the skill folder.*read_file/);
+    });
+  });
 });
