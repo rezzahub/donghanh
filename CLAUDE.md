@@ -1,5 +1,7 @@
 # Claude Code guidance for this repo
 
+Contributor workflow (setup, documenting a change, versioning, releases) is in [CONTRIBUTING.md](./CONTRIBUTING.md). Read it before changing code or docs, and keep it in step with this file when either changes.
+
 ## Workspace
 
 pnpm monorepo. Workspaces: `packages/*`, `create-donghanh`, `site`.
