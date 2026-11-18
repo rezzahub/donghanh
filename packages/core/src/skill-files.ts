@@ -16,8 +16,15 @@ const MAX_LIST_PAGES = 20;
 const DEEP = 100;
 
 /** Folder part of a uri, with its trailing slash. */
-const folderOf = (uri: string): string =>
-  uri.slice(0, uri.lastIndexOf("/") + 1);
+const dirOf = (uri: string): string => uri.slice(0, uri.lastIndexOf("/") + 1);
+
+/** The skill's folder: `skill.folder` with a trailing slash, else the directory of its uri. */
+const folderOf = (skill: { uri: string; folder?: string }): string =>
+  skill.folder
+    ? skill.folder.endsWith("/")
+      ? skill.folder
+      : `${skill.folder}/`
+    : dirOf(skill.uri);
 
 const failed = (what: string, e: unknown) =>
   console.error(
@@ -112,7 +119,7 @@ async function includes(
   }
   let folder: string;
   try {
-    folder = resolveRef(skill.uri, "./");
+    folder = resolveRef(folderOf(skill), "./");
   } catch (e) {
     failed("includes", e);
     return { included, notice };
@@ -122,7 +129,7 @@ async function includes(
   for (const path of (raw ?? "").split(",").map((p) => p.trim())) {
     if (!path || seen.has(path)) continue;
     seen.add(path);
-    const target = resolveRef(skill.uri, path);
+    const target = resolveRef(folder, path);
     if (!target.startsWith(folder)) {
       notice.push(OUTSIDE(path));
       continue;
@@ -159,10 +166,10 @@ export async function attachSkillFiles(
   const matching = files.filter((p) => p.scheme === scheme);
   if (!matching.length) return skill;
   const out: Skill = { ...skill };
-  const folder = folderOf(uri);
+  const folder = folderOf({ uri, folder: skill.folder });
   const notice: string[] = [];
   try {
-    out.refs = extractRefs(skill.markdown, uri);
+    out.refs = extractRefs(skill.markdown, folder);
   } catch (e) {
     failed("refs", e);
   }
@@ -203,7 +210,7 @@ export function renderSkillBrief(skill: Skill, prefix: string): string {
   }
   const { uri } = skill;
   if (!uri || !skill.refs) return out.join("\n");
-  const folder = folderOf(uri);
+  const folder = folderOf({ uri, folder: skill.folder });
   const foot = [`--- files (${uri}) ---`];
   for (const e of skill.files ?? []) foot.push(manifestLine(e, folder));
   if (skill.moreFiles) {
@@ -224,8 +231,8 @@ export function renderSkillBrief(skill: Skill, prefix: string): string {
     }
   }
   foot.push(
-    `Relative links in SKILL.md resolve against its uri, ${uri}; links in other files resolve against the file that contains them.`,
-    `Read a listed file with ${prefix}read_file { path: "<path as listed above>", base: "${uri}" }.`,
+    `Relative links in SKILL.md resolve against ${skill.folder ? "its folder" : "its uri"}, ${skill.folder ? folder : uri}; links in other files resolve against the file that contains them.`,
+    `Read a listed file with ${prefix}read_file { path: "<path as listed above>", base: "${skill.folder ? folder : uri}" }.`,
   );
   return `${out.join("\n")}\n\n${foot.join("\n")}`;
 }

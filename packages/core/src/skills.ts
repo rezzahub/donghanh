@@ -7,6 +7,14 @@ import {
   staticFiles,
 } from "./files";
 import { attachSkillFiles, renderSkillBrief } from "./skill-files";
+
+/**
+ * For hosts that implement their own `use_skill`: `attachSkillFiles` adds the
+ * manifest, includes and refs to a skill; `renderSkillBrief` renders the brief
+ * the agent reads (SKILL.md, included files, footer).
+ */
+export { attachSkillFiles, renderSkillBrief } from "./skill-files";
+
 import type { Executor, OperationComponent } from "./types";
 import { registerOperation } from "./types";
 
@@ -23,6 +31,12 @@ export interface SkillSummary {
 export interface Skill extends SkillSummary {
   markdown: string;
   uri?: string;
+  /**
+   * The uri of the folder holding the skill's files. Defaults to the
+   * directory of `uri`; set it when `uri` is a doc that is itself the folder
+   * node. A missing trailing `/` is added.
+   */
+  folder?: string;
   files?: FileEntry[];
   moreFiles?: number;
   included?: { path: string; text: string }[];
