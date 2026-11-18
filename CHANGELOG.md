@@ -2,14 +2,14 @@
 
 Versions below follow `@donghanh/core` and `@donghanh/hono`. Other packages note their own version where it differs.
 
-## 0.5.1 (unreleased)
+## 0.5.1 (2026-11-18)
 
 ### Added
 
 - `Skill.folder`: the uri of the folder holding a skill's files, for skills whose `uri` is the folder node rather than a `SKILL.md` file.
 - `attachSkillFiles` and `renderSkillBrief` are exported from `@donghanh/core/skills`, for hosts with their own `use_skill`.
 
-## 0.5.0 (unreleased)
+## 0.5.0 (2026-11-18)
 
 ### Added
 
