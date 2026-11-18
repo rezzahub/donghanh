@@ -145,6 +145,10 @@ Each op gets a concrete path based on its `auth` posture. Upload the JSON (or pa
 
 [Tán Đồng](https://github.com/vuadu/splitbee) — bill-splitting app built with @donghanh. 14 operations, GPT Store integration, in-app chat assistant.
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, how to make and document a change, versioning and releases.
+
 ## License
 
 MIT
