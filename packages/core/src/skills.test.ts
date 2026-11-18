@@ -971,4 +971,76 @@ describe("use_skill files", () => {
       expect(brief).not.toMatch(/outside the skill folder.*read_file/);
     });
   });
+
+  describe("parts fail independently", () => {
+    const withList = (list: FileProvider["list"]) => {
+      const tree = {
+        "s/SKILL.md": skillMd("See [a](a.md).", "metadata:\n  include: a.md\n"),
+        "s/a.md": "AAA\n",
+      };
+      const p = staticSkills("k", tree);
+      const files: FileProvider = { ...p.files, list };
+      return skillOperations({
+        providers: [p],
+        files: [files],
+        prefix: "mt_",
+      });
+    };
+
+    test("a failing list still returns includes, refs and a notice", async () => {
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const s = withList(async () => {
+          throw new Error("secret-boom");
+        });
+        const skill = (await run(s, "mt_use_skill", { slug: "s" })) as Skill;
+        expect(skill.files).toBeUndefined();
+        expect(skill.included).toEqual([{ path: "a.md", text: "AAA" }]);
+        expect(skill.refs).toEqual([{ raw: "a.md", uri: "skills://k/s/a.md" }]);
+        const brief = renderSkillBrief(skill, "mt_");
+        expect(brief).toContain("--- included: a.md ---");
+        expect(brief).toContain("--- files (skills://k/s/SKILL.md) ---");
+        expect(brief).toContain(
+          "The file list could not be loaded; try mt_list_files { uri: skills://k/s/ }.",
+        );
+        expect(brief).not.toMatch(/(?<![\w])list_files\b/);
+        expect(brief).not.toContain("secret-boom");
+        expect(JSON.stringify(skill)).not.toContain("secret-boom");
+        expect(JSON.stringify(spy.mock.calls)).not.toContain("secret-boom");
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    test("an unparseable skill uri returns the plain skill", async () => {
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const bad: SkillProvider = {
+          key: "k",
+          async search() {
+            return [];
+          },
+          async get() {
+            return {
+              id: "s",
+              slug: "s",
+              name: "s",
+              description: "d",
+              hash: "h",
+              markdown: skillMd("See [a](a.md)."),
+              uri: "skills://[bad/SKILL.md",
+            };
+          },
+        };
+        const files = staticFiles("skills", { "k/s/a.md": "A\n" });
+        const s = skillOperations({ providers: [bad], files: [files] });
+        const skill = (await run(s, "use_skill", { slug: "s" })) as Skill;
+        expect(skill.markdown).toBe(skillMd("See [a](a.md)."));
+        expect(skill.included).toBeUndefined();
+        expect(skill.refs ?? []).toEqual([]);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
 });

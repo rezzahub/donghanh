@@ -118,7 +118,7 @@ Skills are Markdown playbooks (`SKILL.md`: frontmatter with `name` and `descript
 - `moreFiles`: how many files the manifest left out; `list_files` with the skill folder's uri shows them.
 - `included`: `{ path, text }[]`, the files named in `metadata.include`, in order. Includes must be inside the skill's folder; one that resolves outside it is not read and adds a `notice` line.
 - `refs`: `{ raw, uri }[]`, each relative link in `SKILL.md` with its resolved uri.
-- `notice`: one line per include that could not be inlined (over the cap, missing, binary, or a line cut), with the reason. The rendered footer adds a pointer to `<prefix>read_file` on each line.
+- `notice`: one line per include that could not be inlined (over the cap, missing, binary, or a line cut), with the reason. The rendered footer adds a pointer to `<prefix>read_file` on each line. A file list that could not be loaded adds one line too, and the footer then points to `<prefix>list_files`; the includes and refs are still returned, because they do not depend on the listing.
 
 `parseSkillMarkdown(md)` returns `{ name, description, metadata, body }`; `metadata` is read from the indented one-level `metadata:` block of the frontmatter. A flat top-level `include:` is not read.
 

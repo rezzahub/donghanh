@@ -60,6 +60,8 @@ async function manifest(
 const OUTSIDE = (path: string) =>
   `Include ${path} is outside the skill folder and was not included.`;
 
+const NO_MANIFEST = "The file list could not be loaded";
+
 type Included = { text: string } | { why: string };
 
 /** Read a whole text file through the engine, giving up once it passes the budget. */
@@ -156,17 +158,28 @@ export async function attachSkillFiles(
   const scheme = uriScheme(uri);
   const matching = files.filter((p) => p.scheme === scheme);
   if (!matching.length) return skill;
-  const out: Skill = { ...skill, refs: extractRefs(skill.markdown, uri) };
+  const out: Skill = { ...skill };
   const folder = folderOf(uri);
+  const notice: string[] = [];
+  try {
+    out.refs = extractRefs(skill.markdown, uri);
+  } catch (e) {
+    failed("refs", e);
+  }
   try {
     Object.assign(out, await manifest(matching, folder, uri, ctx));
   } catch (e) {
     failed("manifest", e);
-    return out;
+    notice.push(NO_MANIFEST);
   }
-  const inc = await includes(matching, { ...skill, uri }, ctx);
-  if (inc.included.length) out.included = inc.included;
-  if (inc.notice.length) out.notice = inc.notice.join("\n");
+  try {
+    const inc = await includes(matching, { ...skill, uri }, ctx);
+    if (inc.included.length) out.included = inc.included;
+    notice.push(...inc.notice);
+  } catch (e) {
+    failed("includes", e);
+  }
+  if (notice.length) out.notice = notice.join("\n");
   return out;
 }
 
@@ -200,11 +213,15 @@ export function renderSkillBrief(skill: Skill, prefix: string): string {
   }
   for (const r of skill.refs ?? []) foot.push(`${r.raw} → ${r.uri}`);
   for (const line of skill.notice ? skill.notice.split("\n") : []) {
-    foot.push(
-      line.startsWith("include ")
-        ? `${line}; read it with ${prefix}read_file.`
-        : line,
-    );
+    if (line === NO_MANIFEST) {
+      foot.push(`${line}; try ${prefix}list_files { uri: ${folder} }.`);
+    } else {
+      foot.push(
+        line.startsWith("include ")
+          ? `${line}; read it with ${prefix}read_file.`
+          : line,
+      );
+    }
   }
   foot.push(
     `Relative links in SKILL.md resolve against its uri, ${uri}; links in other files resolve against the file that contains them.`,
