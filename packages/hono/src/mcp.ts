@@ -70,6 +70,29 @@ export interface McpRoutesConfig {
     op: OperationDetail,
     wrapped: object | undefined,
   ) => object | undefined;
+  /**
+   * When a tool reply carries `structuredContent` (default "always").
+   *
+   * Some clients (Claude Code) show the model `structuredContent` instead of
+   * `content` whenever it is present, so the Brief's Messages and `Next:` list
+   * never reach it. `"widgets"` sends `structuredContent` only for operations
+   * bound to a widget; the rest reply with `content` text only. A function
+   * decides per call (`true` sends it), e.g. to opt in JSON clients by header.
+   * Catalog `run_*` calls are decided by the operation they dispatch.
+   *
+   * Unless "always", tools without a widget declare no `outputSchema` (MCP
+   * requires `structuredContent` when one is declared); this applies after the
+   * `outputSchema` hook, which cannot bring it back. `enrichResponse` runs only
+   * when `structuredContent` is sent.
+   */
+  structuredContent?:
+    | "always"
+    | "widgets"
+    | ((ctx: {
+        operationId: string;
+        widget: string | undefined;
+        request: Request;
+      }) => boolean);
   /** Hook to enrich `structuredContent` after execution (e.g. inject display text) */
   enrichResponse?: (
     structured: Record<string, unknown>,
@@ -207,6 +230,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     enrichResponse,
     outputSchema,
     exposure,
+    structuredContent: structuredMode = "always",
   } = config;
 
   const resolved = resolveExposure(registry, exposure);
@@ -234,6 +258,16 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
       },
       challenge,
     };
+  };
+
+  const sendsStructured = (
+    operationId: string,
+    widget: string | undefined,
+    request: Request,
+  ): boolean => {
+    if (structuredMode === "always") return true;
+    if (structuredMode === "widgets") return widget !== undefined;
+    return structuredMode({ operationId, widget, request });
   };
 
   const errorResult = (text: string) => ({
@@ -282,24 +316,25 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
         getOperationInput: (opId) => registry.detail(opId)?.input,
       });
 
-      const structured: Record<string, unknown> = {
-        [op.operationConfig.responseKey]: data,
-      };
-      if (rendered.suggestedActions.length > 0) {
-        structured.actions = rendered.suggestedActions;
-      }
-      if (rendered.display !== undefined) {
-        structured.display = rendered.display;
-      }
+      let structured: Record<string, unknown> | undefined;
+      if (sendsStructured(operationId, detail?.widget, request)) {
+        structured = { [op.operationConfig.responseKey]: data };
+        if (rendered.suggestedActions.length > 0) {
+          structured.actions = rendered.suggestedActions;
+        }
+        if (rendered.display !== undefined) {
+          structured.display = rendered.display;
+        }
 
-      if (enrichResponse) {
-        await enrichResponse(structured, {
-          operationId,
-          data,
-          variables,
-          userId,
-          request,
-        });
+        if (enrichResponse) {
+          await enrichResponse(structured, {
+            operationId,
+            data,
+            variables,
+            userId,
+            request,
+          });
+        }
       }
 
       const meta: Record<string, unknown> = {};
@@ -331,7 +366,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
               }),
             },
           ],
-          structuredContent: structured,
+          ...(structured && { structuredContent: structured }),
           ...(Object.keys(meta).length > 0 && { _meta: meta }),
         },
       };
@@ -584,7 +619,9 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
             : enrichResponse
               ? undefined
               : wrapped;
-          if (out) tool.outputSchema = out;
+          // A tool that may reply without structuredContent must not declare one.
+          const mayOmit = structuredMode !== "always" && !detail?.widget;
+          if (out && !mayOmit) tool.outputSchema = out;
 
           const meta: Record<string, unknown> = { ...detail?.meta };
           if (widget) {
