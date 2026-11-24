@@ -2,7 +2,7 @@
 
 Versions below follow `@donghanh/core` and `@donghanh/hono`. Other packages note their own version where it differs.
 
-## 0.6.0 (unreleased)
+## 0.6.0 (2026-11-25)
 
 ### Added
 
