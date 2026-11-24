@@ -30,11 +30,13 @@ The agent moves through your app by following Actions, the way a user taps butto
 // Not a screen: no location, no next step
 <Brief>{JSON.stringify(board)}</Brief>
 
-// A screen
+// A screen (data: { ws, board, overdue })
 <Brief>
-  <Message>{`Board "${board.name}" in workspace "${ws.name}": ${board.cards.length} cards, ${overdue} overdue.`}</Message>
+  <Message>{`Board "${board.name}" in workspace "${ws.name}": ${board.cards.length} cards, ${overdue.length} overdue.`}</Message>
   <Display data={board.cards} />
-  <Action operation="card-detail" label="Open the first overdue card" variables={{ cardId: firstOverdue.id }} />
+  {overdue[0] && (
+    <Action operation="card-detail" label="Open the first overdue card" variables={{ cardId: overdue[0].id }} />
+  )}
   <Action operation="add-card" label="Add a card" variables={{ boardId: board.id }} />
   <Action operation="list-boards" label="Back to the workspace's boards" variables={{ workspaceId: ws.id }} />
 </Brief>
