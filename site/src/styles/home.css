@@ -366,3 +366,28 @@ h1 span,
     padding-top: 3rem;
   }
 }
+
+.panel pre.agent-text {
+  color: var(--mute);
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.lede code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.channel-mock {
+  margin-top: 1.5rem;
+  max-width: 32rem;
+}
+
+.section-more {
+  color: var(--mute);
+  margin: 1.5rem 0 0;
+}
+
+.section-more a {
+  color: var(--accent);
+}
