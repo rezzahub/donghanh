@@ -75,12 +75,13 @@ export interface McpRoutesConfig {
    *
    * Some clients (Claude Code) show the model `structuredContent` instead of
    * `content` whenever it is present, so the Brief's Messages and `Next:` list
-   * never reach it. `"widgets"` sends `structuredContent` only for operations
-   * bound to a widget; the rest reply with `content` text only. A function
-   * decides per call (`true` sends it), e.g. to opt in JSON clients by header.
+   * never reach it. Operations bound to a widget, or `appCallable` (widgets call
+   * them), always send it. `"widgets"` makes every other operation reply with
+   * `content` text only; a function decides per call for those others (`true`
+   * sends it), e.g. to opt in JSON clients by header.
    * Catalog `run_*` calls are decided by the operation they dispatch.
    *
-   * Unless "always", tools without a widget declare no `outputSchema` (MCP
+   * Unless "always", tools without a widget and not `appCallable` declare no `outputSchema` (MCP
    * requires `structuredContent` when one is declared); this applies after the
    * `outputSchema` hook, which cannot bring it back. `enrichResponse` runs only
    * when `structuredContent` is sent.
@@ -262,12 +263,18 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
 
   const sendsStructured = (
     operationId: string,
-    widget: string | undefined,
+    detail: OperationDetail | null,
     request: Request,
   ): boolean => {
     if (structuredMode === "always") return true;
-    if (structuredMode === "widgets") return widget !== undefined;
-    return structuredMode({ operationId, widget, request });
+    // Widgets read structuredContent, and app-callable operations are called by widgets.
+    if (detail?.widget !== undefined || detail?.appCallable) return true;
+    if (structuredMode === "widgets") return false;
+    return structuredMode({
+      operationId,
+      widget: detail?.widget,
+      request,
+    });
   };
 
   const errorResult = (text: string) => ({
@@ -299,6 +306,8 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
     }
 
     try {
+      // Decide before executing, so a throwing function never fails a call after a write.
+      const sendStructured = sendsStructured(operationId, detail, request);
       const { data, brief } = await executeOperation({
         registry,
         operationId,
@@ -317,7 +326,7 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
       });
 
       let structured: Record<string, unknown> | undefined;
-      if (sendsStructured(operationId, detail?.widget, request)) {
+      if (sendStructured) {
         structured = { [op.operationConfig.responseKey]: data };
         if (rendered.suggestedActions.length > 0) {
           structured.actions = rendered.suggestedActions;
@@ -620,7 +629,10 @@ export function mcpRoutes(config: McpRoutesConfig): Hono {
               ? undefined
               : wrapped;
           // A tool that may reply without structuredContent must not declare one.
-          const mayOmit = structuredMode !== "always" && !detail?.widget;
+          const mayOmit =
+            structuredMode !== "always" &&
+            !detail?.widget &&
+            !detail?.appCallable;
           if (out && !mayOmit) tool.outputSchema = out;
 
           const meta: Record<string, unknown> = { ...detail?.meta };

@@ -882,11 +882,10 @@ describe("structuredContent option", () => {
     const on = await call(app, "plain", { "x-json": "1" });
     expect(on.structuredContent).toBeDefined();
     await call(app, "ui");
+    expect(seen).toHaveLength(2); // not consulted for the widget tool
     expect(seen[0].operationId).toBe("plain");
     expect(seen[0].widget).toBeUndefined();
     expect(seen[0].request).toBeInstanceOf(Request);
-    expect(seen[2].operationId).toBe("ui");
-    expect(seen[2].widget).toBe("boards");
   });
 
   test("tools/list drops outputSchema for widget-less tools but keeps it for widget tools", async () => {
@@ -948,6 +947,42 @@ describe("structuredContent option", () => {
     expect(seen).toEqual(["a", "b"]);
     const { result } = await rpc(app, "tools/list");
     for (const t of result.tools) expect(t.outputSchema).toBeUndefined();
+  });
+
+  test("widget tools always send structuredContent, even if the function says false", async () => {
+    const app = build({ structuredContent: () => false });
+    expect((await call(app, "ui")).structuredContent).toBeDefined();
+    expect("structuredContent" in (await call(app, "plain"))).toBe(false);
+  });
+
+  test("appCallable tools are treated like widget tools", async () => {
+    const reg = buildRegistry(
+      App({ operations: { cb: makeOp("cb", { appCallable: true }) } }),
+      { cb: schema },
+    );
+    for (const structuredContent of ["widgets", () => false]) {
+      const app = mcpRoutes({
+        ...baseConfig,
+        registry: reg,
+        structuredContent,
+      } as any);
+      expect((await call(app, "cb")).structuredContent).toBeDefined();
+      const { result } = await rpc(app, "tools/list");
+      expect(result.tools[0].outputSchema).toBeDefined();
+    }
+  });
+
+  test("a throwing function fails before the operation runs", async () => {
+    const executor = vi.fn(async () => ({}));
+    const app = build({
+      executor,
+      structuredContent: () => {
+        throw new Error("bad fn");
+      },
+    });
+    const res = await call(app, "plain");
+    expect(res.isError).toBe(true);
+    expect(executor).not.toHaveBeenCalled();
   });
 
   test("enrichResponse is skipped when structuredContent is omitted", async () => {

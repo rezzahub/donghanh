@@ -25,13 +25,13 @@ Which part the model sees depends on the client:
 | Claude Code | `structuredContent` when the result has it; the text only when it doesn't |
 | ChatGPT (Apps SDK) | the text and `structuredContent`; widgets render from `structuredContent` |
 
-By default `mcpRoutes` always sends `structuredContent`, so in Claude Code the model gets `actions` and `display` as JSON and never your Messages. For an app that targets text-reading agents, pass `structuredContent: "widgets"`: only tools bound to a widget send `structuredContent`, and every other tool replies with the text alone (Messages, then the `Next:` list). Those tools also stop declaring an `outputSchema`, since MCP requires `structuredContent` for tools that declare one.
+By default `mcpRoutes` always sends `structuredContent`, so in Claude Code the model gets `actions` and `display` as JSON and never your Messages. For an app that targets text-reading agents, pass `structuredContent: "widgets"`: only tools bound to a widget (or marked `appCallable`, which widgets call) send `structuredContent`, and every other tool replies with the text alone (Messages, then the `Next:` list). Those tools also stop declaring an `outputSchema`, since MCP requires `structuredContent` for tools that declare one.
 
 ```ts
 mcpRoutes({ /* ... */ structuredContent: "widgets" });
 ```
 
-To keep JSON for clients that want it, pass a function instead. It is called per tool call with `{ operationId, widget, request }` and returns `true` to send `structuredContent`:
+To keep JSON for clients that want it, pass a function instead. Widget and `appCallable` tools always send `structuredContent`; the function is called per call, before the operation runs, only for the other tools, with `{ operationId, widget, request }` (`widget` is undefined there), and returns `true` to send it:
 
 ```ts
 mcpRoutes({
