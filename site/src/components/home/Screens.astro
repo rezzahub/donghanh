@@ -1,0 +1,43 @@
+---
+const parts = [
+  {
+    name: "Where am I",
+    primitive: "<Message>",
+    text: "The first line names the thing and its parent, like a title bar.",
+  },
+  {
+    name: "What is here",
+    primitive: "<Message> + <Display>",
+    text: "A short summary of what matters. Display carries the rows.",
+  },
+  {
+    name: "Where next",
+    primitive: "<Action>",
+    text: "Two to five buttons with the ids filled in. The agent taps; it never guesses an id or a tool.",
+  },
+];
+---
+
+<section class="section">
+  <p class="section-number">01</p>
+  <h2>Every reply is a screen.</h2>
+  <p class="section-text">
+    A person moves through an app screen by screen. Good AX gives an agent the same thing:
+    each tool result says where it is, what is here and what it can do next.
+  </p>
+  <div class="grid">
+    {
+      parts.map((part) => (
+        <article class="card">
+          <h3>{part.name}</h3>
+          <p>{part.text}</p>
+          <code>{part.primitive}</code>
+        </article>
+      ))
+    }
+  </div>
+  <p class="section-more">
+    <a href="/guides/introduction/#think-in-screens">Read Think in screens →</a> the rules, and what each primitive
+    sends to the model.
+  </p>
+</section>

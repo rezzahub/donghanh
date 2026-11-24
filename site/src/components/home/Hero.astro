@@ -4,46 +4,51 @@ import type { ComponentProps } from "astro/types";
 import codeTheme from "../../styles/code-theme.json";
 import CopyCommand from "./CopyCommand.astro";
 
-const example = `function ListItems({ data }) {
+const example = `function BoardDetail({ data: { board, ws, overdue } }) {
   return (
     <Brief>
-      {\`You have \${data.items.length} items.\`}
-      <Display data={data.items} />
-      <Action operation="add-item"
-              label="Add an item" />
+      <Message>{\`Board "\${board.name}" in workspace
+        "\${ws.name}": \${board.cards.length} cards,
+        \${overdue.length} overdue.\`}</Message>
+      <Display data={board.cards} />
+      <Action operation="card-detail"
+        label="Open the first overdue card"
+        variables={{ cardId: overdue[0].id }} />
+      <Action operation="list-boards"
+        label="Back to the workspace's boards"
+        variables={{ workspaceId: ws.id }} />
     </Brief>
   );
 }`;
+
+const agentText = `Board "Q3 launch" in workspace "Acme": 12 cards, 2 overdue.
+
+Next:
+- Open the first overdue card (card-detail {"cardId":"c_81"})
+- Back to the workspace's boards (list-boards {"workspaceId":"w_1"})`;
 ---
 
 <section class="hero">
-  <h1>Write your agent UI in JSX.<br /><span>Ship it to every chat.</span></h1>
+  <h1>Give your agent screens, not JSON.<br /><span>Design AX like you design UX.</span></h1>
   <p class="lede">
-    Describe what your agent can say and do once.
-    <strong>Run it in ChatGPT or your own app.</strong>
+    AX is agent experience: what an agent sees and where it can go, the way UX is for a person.
+    Each operation returns a <code>&lt;Brief&gt;</code>, a screen for the agent: where it is, what is here,
+    and buttons for where it can go next.
+    <strong>donghanh renders it for ChatGPT, any MCP client and your own chat.</strong>
   </p>
   <div class="cta">
-    <a class="pill" href="/guides/introduction/">Read the docs</a>
+    <a class="pill" href="/guides/introduction/#think-in-screens">Think in screens</a>
     <CopyCommand command="bunx create-donghanh my-app" />
   </div>
 
   <div class="panels">
     <figure class="panel">
-      <figcaption>list-items.tsx</figcaption>
+      <figcaption>board-detail.tsx</figcaption>
       <Code code={example} lang="tsx" theme={codeTheme as ComponentProps<typeof Code>["theme"]} />
     </figure>
     <figure class="panel">
-      <figcaption>In ChatGPT, with an Apps SDK widget</figcaption>
-      <div class="chat">
-        <p class="chat-user">What's on my list?</p>
-        <p>You have 3 items.</p>
-        <ul class="chat-list">
-          <li>Book flights</li>
-          <li>Renew passport</li>
-          <li>Pack bags</li>
-        </ul>
-        <span class="chat-action">Add an item</span>
-      </div>
+      <figcaption>What the agent reads (MCP tool result)</figcaption>
+      <pre class="agent-text">{agentText}</pre>
     </figure>
   </div>
 </section>
