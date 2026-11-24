@@ -4,6 +4,8 @@ Conversational UI framework. Build agent interfaces with JSX.
 
 Operations declare what the agent sees with `<Brief>` — the framework renders it differently per target (ChatGPT Apps SDK, LLM tool results, in-app chat, and the deprecated GPT Store).
 
+**A Brief is a screen for the agent.** Like a screen in a mobile app, it says where the agent is, shows what is here, and offers buttons (`<Action>`s with ids filled in) for where it can go next. The agent navigates your app by following them. Don't return raw JSON in a Brief; see [Think in screens](https://donghanh.dev/guides/introduction/#think-in-screens).
+
 ## Quick Start
 
 ```bash

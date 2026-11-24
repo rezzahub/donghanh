@@ -5,6 +5,21 @@ description: The JSX primitives that make up the agent's HUD.
 
 Every operation returns a `<Brief>` — a JSX tree that serves as the agent's heads-up display. It's **not shown to users**. The framework renders it differently per target.
 
+Design each Brief as a screen: a `<Message>` that says where the agent is and what is here, `<Display>` for the data, and a few `<Action>`s with ids filled in for where it can go next. See [Think in screens](/guides/introduction/#think-in-screens).
+
+## What the agent reads
+
+Under `mcpRoutes` (MCP and the Apps SDK), each primitive lands in a different place, and the model reads only the tool text:
+
+| Primitive | Lands in | Read by the model |
+|---|---|---|
+| `<Message>` | Tool result text (all Messages joined into one paragraph) | Yes |
+| `<Action>` | The `Next:` list in the text, with variables; `structuredContent.actions` | Yes |
+| `<Display>` | `structuredContent.display` | Only in clients that pass structured content on; always by widgets |
+| `<Context>` | `_meta["donghanh/context"]` | Usually not |
+
+Anything the agent needs to act on goes in a Message or an Action.
+
 ## Primitives
 
 ### `<Brief>`
@@ -21,7 +36,7 @@ The root container. Every operation must return one.
 
 ### `<Action>`
 
-A suggested next operation — a tool hint for the agent.
+A button on the screen: a next operation for the agent, with the ids it needs filled in.
 
 ```tsx
 <Action
@@ -49,7 +64,7 @@ Explicit text content. String children of `<Brief>` are auto-wrapped as messages
 
 ### `<Context>`
 
-Raw context for the agent (not displayed).
+Metadata for the host, not displayed. Under `mcpRoutes` it goes to `_meta`, which models usually don't read: put what the agent needs in a `<Message>`.
 
 ```tsx
 <Context value={{ locale: "vi", timezone: "Asia/Ho_Chi_Minh" }} />
