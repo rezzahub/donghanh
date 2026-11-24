@@ -9,14 +9,23 @@ Design each Brief as a screen: a `<Message>` that says where the agent is and wh
 
 ## What the agent reads
 
-Under `mcpRoutes` (MCP and the Apps SDK), each primitive lands in a different place, and the model reads only the tool text:
+Under `mcpRoutes` (MCP and the Apps SDK) a tool result has two parts, and each primitive lands in one of them:
 
-| Primitive | Lands in | Read by the model |
-|---|---|---|
-| `<Message>` | Tool result text (all Messages joined into one paragraph) | Yes |
-| `<Action>` | The `Next:` list in the text, with variables; `structuredContent.actions` | Yes |
-| `<Display>` | `structuredContent.display` | Only in clients that pass structured content on; always by widgets |
-| `<Context>` | `_meta["donghanh/context"]` | Usually not |
+| Primitive | Lands in |
+|---|---|
+| `<Message>` | Tool result text (all Messages joined into one paragraph) |
+| `<Action>` | The `Next:` list in the text, with variables; and `structuredContent.actions` |
+| `<Display>` | `structuredContent.display` |
+| `<Context>` | `_meta["donghanh/context"]` |
+
+Which part the model sees depends on the client:
+
+| Client | The model sees |
+|---|---|
+| Claude Code | `structuredContent` when the result has it; the text only when it doesn't |
+| ChatGPT (Apps SDK) | the text and `structuredContent`; widgets render from `structuredContent` |
+
+`mcpRoutes` always sends `structuredContent` today, so in Claude Code the model gets `actions` and `display` as JSON and never your Messages. If your app targets text-reading agents and has no widget for a tool, strip `structuredContent` from that tool's reply (for example in your route, after `mcpRoutes` answers) and stop declaring an `outputSchema` for it, since MCP requires `structuredContent` for tools that declare one. A built-in option is planned.
 
 Anything the agent needs to act on goes in a Message or an Action.
 

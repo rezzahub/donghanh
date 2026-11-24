@@ -24,7 +24,7 @@ The agent moves through your app by following Actions, the way a user taps butto
 - **End with the next moves.** Fill `variables` with the ids from this screen, and include the way up or back when there is one.
 - **Offer the few moves that make sense here**, not every operation in the app.
 - **Errors are screens too.** Say what went wrong and offer the Action that fixes it.
-- **Put what the agent must read in a Message.** Under `mcpRoutes` the model reads the tool text: Messages, then the `Next:` list. `<Display>` goes to `structuredContent` (the widget, and clients that pass it on) and `<Context>` goes to `_meta`, which models usually don't see.
+- **Put what the agent must read in a Message, and know your client.** Under `mcpRoutes` a result has two parts: the tool text (Messages, then the `Next:` list) and `structuredContent` (`actions`, `display`). Clients choose which one the model sees: Claude Code shows `structuredContent` whenever it is present, so the Messages never reach the model there. `<Context>` goes to `_meta`, which models usually don't see. For an agent that reads text, leave `structuredContent` out of replies that have no widget (see [What the agent reads](https://donghanh.dev/concepts/primitives/#what-the-agent-reads)).
 
 ```tsx
 // Not a screen: no location, no next step
