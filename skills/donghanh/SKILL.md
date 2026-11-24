@@ -24,7 +24,7 @@ The agent moves through your app by following Actions, the way a user taps butto
 - **End with the next moves.** Fill `variables` with the ids from this screen, and include the way up or back when there is one.
 - **Offer the few moves that make sense here**, not every operation in the app.
 - **Errors are screens too.** Say what went wrong and offer the Action that fixes it.
-- **Put what the agent must read in a Message, and know your client.** Under `mcpRoutes` a result has two parts: the tool text (Messages, then the `Next:` list) and `structuredContent` (`actions`, `display`). Clients choose which one the model sees: Claude Code shows `structuredContent` whenever it is present, so the Messages never reach the model there. `<Context>` goes to `_meta`, which models usually don't see. For an agent that reads text, leave `structuredContent` out of replies that have no widget (see [What the agent reads](https://donghanh.dev/concepts/primitives/#what-the-agent-reads)).
+- **Put what the agent must read in a Message, and know your client.** Under `mcpRoutes` a result has two parts: the tool text (Messages, then the `Next:` list) and `structuredContent` (`actions`, `display`). Clients choose which one the model sees: Claude Code shows `structuredContent` whenever it is present, so the Messages never reach the model there. `<Context>` goes to `_meta`, which models usually don't see. For an agent that reads text, pass `structuredContent: "widgets"` to `mcpRoutes`, which sends `structuredContent` only for widget and `appCallable` tools and replies with text for the rest (or a function `({ operationId, widget, request }) => boolean`, consulted only for the other tools, to opt clients in; see [What the agent reads](https://donghanh.dev/concepts/primitives/#what-the-agent-reads)).
 
 ```tsx
 // Not a screen: no location, no next step
@@ -218,6 +218,8 @@ app.route("/", mcpRoutes({
   widgets,           // from widget-vite manifest
 }));
 ```
+
+Option `structuredContent` (`"always"` default, `"widgets"`, or `(ctx) => boolean`; widget and `appCallable` tools always send it) controls whether a reply carries `structuredContent`; use `"widgets"` for clients that show the model `structuredContent` over the text (Claude Code). Tools without a widget then declare no `outputSchema`.
 
 Auth: per-tool via `OperationConfig.auth`. Unauth + required → return success result with `isError: true` + `_meta["mcp/www_authenticate"]` to trigger OAuth UI.
 

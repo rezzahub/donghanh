@@ -822,3 +822,188 @@ describe("widget meta merge", () => {
     });
   });
 });
+
+describe("structuredContent option", () => {
+  const schema = { type: "object", properties: { n: { type: "number" } } };
+  const registry = () =>
+    buildRegistry(
+      App({
+        operations: {
+          plain: makeOp("plain"),
+          ui: makeOp("ui", { widget: "boards" }),
+        },
+      }),
+      { plain: schema, ui: schema },
+    );
+  const widgets = { boards: { uri: "ui://w/b.html", html: "<div/>" } };
+  const build = (extra: Record<string, unknown> = {}) =>
+    mcpRoutes({ ...baseConfig, registry: registry(), widgets, ...extra });
+  const call = async (
+    app: ReturnType<typeof mcpRoutes>,
+    name: string,
+    headers?: Record<string, string>,
+  ) => (await rpc(app, "tools/call", { name, arguments: {} }, headers)).result;
+
+  test("default keeps structuredContent for every tool", async () => {
+    const app = build();
+    expect((await call(app, "plain")).structuredContent).toBeDefined();
+    expect((await call(app, "ui")).structuredContent).toBeDefined();
+  });
+
+  test('"always" is the same as the default', async () => {
+    const app = build({ structuredContent: "always" });
+    expect((await call(app, "plain")).structuredContent).toBeDefined();
+    const { result } = await rpc(app, "tools/list");
+    expect(result.tools.every((t: any) => t.outputSchema)).toBe(true);
+  });
+
+  test('"widgets" omits structuredContent for a widget-less tool', async () => {
+    const res = await call(build({ structuredContent: "widgets" }), "plain");
+    expect("structuredContent" in res).toBe(false);
+    expect(res.content[0].text).toBe("ok");
+  });
+
+  test('"widgets" keeps structuredContent for a widget tool', async () => {
+    const res = await call(build({ structuredContent: "widgets" }), "ui");
+    expect(res.structuredContent).toBeDefined();
+    expect(res._meta["openai/outputTemplate"]).toBe("ui://w/b.html");
+  });
+
+  test("a function decides per call and receives operationId, widget and request", async () => {
+    const seen: any[] = [];
+    const app = build({
+      structuredContent: (ctx: any) => {
+        seen.push(ctx);
+        return ctx.request.headers.get("x-json") === "1";
+      },
+    });
+    const off = await call(app, "plain");
+    expect("structuredContent" in off).toBe(false);
+    const on = await call(app, "plain", { "x-json": "1" });
+    expect(on.structuredContent).toBeDefined();
+    await call(app, "ui");
+    expect(seen).toHaveLength(2); // not consulted for the widget tool
+    expect(seen[0].operationId).toBe("plain");
+    expect(seen[0].widget).toBeUndefined();
+    expect(seen[0].request).toBeInstanceOf(Request);
+  });
+
+  test("tools/list drops outputSchema for widget-less tools but keeps it for widget tools", async () => {
+    for (const structuredContent of ["widgets", () => true]) {
+      const { result } = await rpc(build({ structuredContent }), "tools/list");
+      const byName = Object.fromEntries(
+        result.tools.map((t: any) => [t.name, t]),
+      );
+      expect(byName.plain.outputSchema).toBeUndefined();
+      expect(byName.ui.outputSchema).toBeDefined();
+    }
+  });
+
+  test("the outputSchema hook cannot bring the schema back for a widget-less tool", async () => {
+    const { result } = await rpc(
+      build({
+        structuredContent: "widgets",
+        outputSchema: () => ({ type: "object" }),
+      }),
+      "tools/list",
+    );
+    const byName = Object.fromEntries(
+      result.tools.map((t: any) => [t.name, t]),
+    );
+    expect(byName.plain.outputSchema).toBeUndefined();
+    expect(byName.ui.outputSchema).toEqual({ type: "object" });
+  });
+
+  test("run_read is decided by the dispatched operation", async () => {
+    const reg = buildRegistry(
+      App({ operations: { a: makeOp("a"), b: makeOp("b") } }),
+    );
+    const seen: any[] = [];
+    const mk = (structuredContent: unknown) =>
+      mcpRoutes({
+        ...baseConfig,
+        registry: reg,
+        exposure: { default: "catalog" },
+        structuredContent,
+      } as any);
+    const run = async (app: ReturnType<typeof mcpRoutes>, id: string) =>
+      (
+        await rpc(app, "tools/call", {
+          name: "run_read",
+          arguments: { id, variables: {} },
+        })
+      ).result;
+    // widgets: catalog operations never carry a widget, so no structuredContent
+    const w = await run(mk("widgets"), "a");
+    expect("structuredContent" in w).toBe(false);
+    expect(w.content[0].text).toContain("ok");
+    // function: receives the target operation id, not "run_read"
+    const app = mk((ctx: any) => {
+      seen.push(ctx.operationId);
+      return ctx.operationId === "b";
+    });
+    expect("structuredContent" in (await run(app, "a"))).toBe(false);
+    expect((await run(app, "b")).structuredContent).toBeDefined();
+    expect(seen).toEqual(["a", "b"]);
+    const { result } = await rpc(app, "tools/list");
+    for (const t of result.tools) expect(t.outputSchema).toBeUndefined();
+  });
+
+  test("widget tools always send structuredContent, even if the function says false", async () => {
+    const app = build({ structuredContent: () => false });
+    expect((await call(app, "ui")).structuredContent).toBeDefined();
+    expect("structuredContent" in (await call(app, "plain"))).toBe(false);
+  });
+
+  test("appCallable tools are treated like widget tools", async () => {
+    const reg = buildRegistry(
+      App({ operations: { cb: makeOp("cb", { appCallable: true }) } }),
+      { cb: schema },
+    );
+    for (const structuredContent of ["widgets", () => false]) {
+      const app = mcpRoutes({
+        ...baseConfig,
+        registry: reg,
+        structuredContent,
+      } as any);
+      expect((await call(app, "cb")).structuredContent).toBeDefined();
+      const { result } = await rpc(app, "tools/list");
+      expect(result.tools[0].outputSchema).toBeDefined();
+    }
+  });
+
+  test("a throwing function fails before the operation runs", async () => {
+    const executor = vi.fn(async () => ({}));
+    const app = build({
+      executor,
+      structuredContent: () => {
+        throw new Error("bad fn");
+      },
+    });
+    const res = await call(app, "plain");
+    expect(res.isError).toBe(true);
+    expect(executor).not.toHaveBeenCalled();
+  });
+
+  test("enrichResponse is skipped when structuredContent is omitted", async () => {
+    const enrichResponse = vi.fn(async () => {});
+    const app = build({ structuredContent: "widgets", enrichResponse });
+    await call(app, "plain");
+    expect(enrichResponse).not.toHaveBeenCalled();
+    await call(app, "ui");
+    expect(enrichResponse).toHaveBeenCalledTimes(1);
+  });
+
+  test("errors are unchanged", async () => {
+    const app = build({
+      structuredContent: "widgets",
+      executor: (async () => {
+        throw new Error("boom");
+      }) as Executor,
+    });
+    const res = await call(app, "plain");
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toBe("boom");
+    expect("structuredContent" in res).toBe(false);
+  });
+});

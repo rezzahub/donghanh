@@ -2,6 +2,12 @@
 
 Versions below follow `@donghanh/core` and `@donghanh/hono`. Other packages note their own version where it differs.
 
+## 0.6.0 (unreleased)
+
+### Added
+
+- `mcpRoutes` option `structuredContent`: `"always"` (default, unchanged), `"widgets"` (only widget and `appCallable` tools send `structuredContent`; the others reply with text only) or a per-call function consulted only for non-widget, non-`appCallable` tools. Tools that may omit it declare no `outputSchema`, and `enrichResponse` runs only when it is sent. `@donghanh/hono` only; core stays 0.5.1.
+
 ## 0.5.1 (2026-11-18)
 
 ### Added
